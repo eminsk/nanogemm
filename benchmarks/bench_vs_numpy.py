@@ -13,9 +13,15 @@ import numpy as np
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-# Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import nanogemm as ng
+try:
+    import nanogemm as ng
+except ImportError:
+    for p in [Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent]:
+        if (p / "nanogemm" / "__init__.py").exists():
+            sys.path.insert(0, str(p))
+            break
+    import nanogemm as ng
+
 
 
 def benchmark_size(dim: int, num_iters: int):
