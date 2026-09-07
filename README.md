@@ -7,6 +7,7 @@
 [![SIMD](https://img.shields.io/badge/SIMD-AVX2%20%2B%20FMA%20(256--bit)-brightgreen)](https://github.com/eminsk/nanogemm)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
+[![Dev.to](https://img.shields.io/badge/Dev.to-Read%20Article-0a0a0a?logo=devdotto)](https://dev.to/eminsk/how-i-beat-numpy-matrix-multiplication-by-28x-with-a-100kb-c-microkernel-82k)
 
 **NanoGEMM** is a minimalist, bare-metal General Matrix Multiplication (GEMM) engine designed for sub-microsecond CPU inference and high-performance computing in Python.
 
