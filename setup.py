@@ -2,15 +2,27 @@ import sys
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
+import platform
+
 class BuildExt(build_ext):
     def build_extensions(self):
         compiler_type = self.compiler.compiler_type
+        machine = platform.machine().lower()
+        is_arm = machine in ("arm64", "aarch64") or ("arm" in machine)
+
         for ext in self.extensions:
             if compiler_type == "msvc":
-                ext.extra_compile_args = ["/O2", "/arch:AVX2", "/fp:fast", "/DBUILDING_NANOGEMM"]
+                if is_arm:
+                    ext.extra_compile_args = ["/O2", "/fp:fast", "/DBUILDING_NANOGEMM"]
+                else:
+                    ext.extra_compile_args = ["/O2", "/arch:AVX2", "/fp:fast", "/DBUILDING_NANOGEMM"]
             else:
-                ext.extra_compile_args = ["-O3", "-mavx2", "-mfma", "-ffast-math", "-fPIC", "-DBUILDING_NANOGEMM"]
+                if is_arm:
+                    ext.extra_compile_args = ["-O3", "-ffast-math", "-fPIC", "-DBUILDING_NANOGEMM"]
+                else:
+                    ext.extra_compile_args = ["-O3", "-mavx2", "-mfma", "-ffast-math", "-fPIC", "-DBUILDING_NANOGEMM"]
         super().build_extensions()
+
 
 ext_modules = [
     Extension(
