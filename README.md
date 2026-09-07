@@ -110,7 +110,7 @@ res = ng.sgemm(A, B, alpha=2.0, beta=0.5, c=out)
 
 ## 🧪 Testing & Verification
 
-Run the comprehensive correctness test suite comparing NanoGEMM with NumPy reference outputs across random uniforms, normals, non-square dimensions, and prime shapes:
+Run the comprehensive correctness test suite verifying **100% Bitwise Exactness** (zero rounding error, `diff: 0.0 EXACT`, 0-bit mismatch across integer, dyadic fraction, rectangular, and prime dimensions):
 
 ```bash
 python tests/test_correctness.py
