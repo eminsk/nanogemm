@@ -5,4 +5,5 @@ include src/*.h
 include src/*.c
 recursive-include tests *.py
 recursive-include benchmarks *.py *.c
+recursive-include asm *.asm *.inc *.dll *.exe *.bat *.md
 recursive-include nanogemm *.dll *.so *.dylib

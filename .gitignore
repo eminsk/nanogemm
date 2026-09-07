@@ -7,6 +7,7 @@ __pycache__/
 *.exe
 !asm/*.dll
 !asm/*.exe
+!nanogemm/*.dll
 *.o
 *.a
 *.lib
