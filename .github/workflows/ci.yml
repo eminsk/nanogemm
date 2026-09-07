@@ -1,4 +1,4 @@
-﻿name: NanoGEMM CI
+name: NanoGEMM CI
 
 on:
   push:

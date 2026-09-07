@@ -1,4 +1,4 @@
-﻿"""
+"""
 Correctness tests for NanoGEMM matrix multiplication engine.
 Works with both pytest and python direct execution.
 """

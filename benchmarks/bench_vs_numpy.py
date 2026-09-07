@@ -1,4 +1,4 @@
-﻿"""
+"""
 Official Benchmark Suite: NanoGEMM vs NumPy on CPU.
 Measures latency (microseconds), throughput (GFLOPS), and speedup factor.
 """

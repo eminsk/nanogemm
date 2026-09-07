@@ -1,4 +1,4 @@
-﻿"""
+"""
 NanoGEMM: Minimalist, bare-metal SIMD & Assembly Matrix Multiplication Engine.
 Zero-overhead CPU microkernels for AI and scientific computing in Python.
 """

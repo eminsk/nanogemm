@@ -1,4 +1,6 @@
-﻿#define BUILDING_NANOGEMM
+#ifndef BUILDING_NANOGEMM
+#define BUILDING_NANOGEMM
+#endif
 #include "nanogemm_kernel.h"
 #include <immintrin.h>
 #include <string.h>

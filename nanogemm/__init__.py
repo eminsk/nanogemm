@@ -1,4 +1,4 @@
-﻿"""
+"""
 NanoGEMM: Minimalist, bare-metal SIMD & Assembly Matrix Multiplication Engine.
 """
 

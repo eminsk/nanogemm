@@ -1,4 +1,4 @@
-﻿# NanoGEMM ⚡
+# NanoGEMM ⚡
 
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)

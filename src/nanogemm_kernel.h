@@ -1,4 +1,4 @@
-﻿#ifndef NANOGEMM_KERNEL_H
+#ifndef NANOGEMM_KERNEL_H
 #define NANOGEMM_KERNEL_H
 
 #ifdef __cplusplus
