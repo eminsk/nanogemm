@@ -41,7 +41,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "numpy>=1.20.0"
+    "numpy>=1.20.0, <2.3.0; python_version <= '3.13'",
+    "numpy>=2.3.0; python_version >= '3.14'",
 ]
 
 [project.urls]
