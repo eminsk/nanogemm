@@ -30,6 +30,19 @@ Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (singl
 > 💡 **Why is NanoGEMM faster on small/medium matrices?**  
 > Traditional BLAS engines incur 3–10 µs of fixed overhead per invocation due to dynamic runtime dispatch, argument sanitization, thread synchronization, and packing buffers. NanoGEMM utilizes a zero-allocation, direct register-tiled microkernel that executes in **sub-microsecond time** immediately upon invocation.
 
+### ⚙️ Benchmark Environment & Test Configuration
+
+| Parameter | Specification |
+| :--- | :--- |
+| **CPU Architecture** | x86-64 with AVX2 (256-bit SIMD) + FMA3 support |
+| **Execution Model** | **Single-Core / Single-Threaded (1 Thread)** for NanoGEMM (zero thread-pool overhead) |
+| **NumPy Baseline** | NumPy 2.2+ linked against OpenBLAS (standard runtime) |
+| **C Compiler** | GCC (`-O3 -mavx2 -mfma`) / MSVC (`/O2 /arch:AVX2`) |
+| **Methodology** | Median latency across 10,000 iterations per size with cache pre-warming |
+| **Data Type** | IEEE-754 Single-Precision (`float32`), contiguous C-order layout |
+
+> 📌 **Single-Thread Design Note:** NanoGEMM runs strictly on a single CPU core without thread pools, pthreads, or mutex barriers. For small matrices ($16 \times 16$ to $64 \times 64$), thread synchronization in OpenMP costs more cycles than the matrix multiply itself. NumPy/OpenBLAS incurs dispatch latency, whereas NanoGEMM enters CPU registers directly.
+
 ---
 
 ## 🛠 Architectural Design
