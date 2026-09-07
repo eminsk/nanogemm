@@ -7,9 +7,15 @@ import numpy as np
 import sys
 from pathlib import Path
 
-# Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import nanogemm as ng
+try:
+    import nanogemm as ng
+except ImportError:
+    for p in [Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent]:
+        if (p / "nanogemm" / "__init__.py").exists():
+            sys.path.insert(0, str(p))
+            break
+    import nanogemm as ng
+
 
 
 def test_simd_isa_available():
