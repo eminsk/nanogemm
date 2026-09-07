@@ -1,5 +1,5 @@
 ; =============================================================================
-; NanoGEMM — High-Performance AVX2+FMA Matrix Multiplication DLL (x86-64 FASM)
+; NanoGEMM - High-Performance AVX2+FMA Matrix Multiplication DLL (x86-64 FASM)
 ; =============================================================================
 
 format PE64 GUI 6.0 DLL
@@ -32,3 +32,8 @@ export 'nanogemm64.dll',\
        nanogemm_matmul,   'nanogemm_matmul',\
        nanogemm_sgemm,    'nanogemm_sgemm',\
        nanogemm_simd_isa, 'nanogemm_simd_isa'
+
+section '.reloc' fixups data readable discardable
+if $=$$
+    dd 0,8
+end if

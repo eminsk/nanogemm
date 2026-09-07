@@ -1,5 +1,5 @@
 ; =============================================================================
-; NanoGEMM — High-Performance 32-bit SSE2 Matrix Multiplication DLL (x86 FASM)
+; NanoGEMM - High-Performance 32-bit SSE2 Matrix Multiplication DLL (x86 FASM)
 ; =============================================================================
 
 format PE GUI 4.0 DLL
@@ -25,3 +25,8 @@ export 'nanogemm32.dll',\
        nanogemm_matmul,   'nanogemm_matmul',\
        nanogemm_sgemm,    'nanogemm_sgemm',\
        nanogemm_simd_isa, 'nanogemm_simd_isa'
+
+section '.reloc' fixups data readable discardable
+if $=$$
+    dd 0,8
+end if
