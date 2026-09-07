@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/nanogemm.svg?color=blue)](https://pypi.org/project/nanogemm/)
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://pypi.org/project/nanogemm/)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue)](https://pypi.org/project/nanogemm/)
 [![SIMD](https://img.shields.io/badge/SIMD-AVX2%20%2B%20FMA%20(256--bit)-brightgreen)](https://github.com/eminsk/nanogemm)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
@@ -69,7 +69,11 @@ Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (singl
 ### Installation via PyPI (Recommended)
 ```bash
 pip install nanogemm
+# or with uv
+uv add nanogemm
 ```
+
+> **Python Compatibility:** Fully tested and verified across **Python 3.9 through 3.15 (including 3.15.0rc2)**.
 
 ### Build from Source
 ```bash
