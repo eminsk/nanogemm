@@ -11,7 +11,30 @@ import time
 from pathlib import Path
 import numpy as np
 
-ASM_DIR = Path(__file__).resolve().parent.parent / "asm"
+def _find_asm_dir() -> Path:
+    candidates = [
+        Path(__file__).resolve().parent / "asm",
+        Path(__file__).resolve().parent.parent / "asm",
+        Path(__file__).resolve().parent / ".." / "nanogemm" / "asm",
+        Path(__file__).resolve().parent.parent / "nanogemm" / "asm",
+        Path(r"C:\proekts\nanogemm\asm"),
+    ]
+    try:
+        import nanogemm
+        pkg_file = getattr(nanogemm, "__file__", None)
+        if pkg_file:
+            pkg_dir = Path(pkg_file).resolve().parent
+            candidates.extend([pkg_dir / "asm", pkg_dir.parent / "asm"])
+    except Exception:
+        pass
+
+    for p in candidates:
+        resolved = p.resolve()
+        if resolved.is_dir() and ((resolved / "nanogemm64.dll").exists() or (resolved / "build.bat").exists()):
+            return resolved
+    return candidates[0].resolve()
+
+ASM_DIR = _find_asm_dir()
 DLL64_PATH = ASM_DIR / "nanogemm64.dll"
 EXE64_PATH = ASM_DIR / "test_nanogemm64.exe"
 DLL32_PATH = ASM_DIR / "nanogemm32.dll"
