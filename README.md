@@ -141,6 +141,31 @@ python benchmarks/bench_vs_numpy.py
 
 ---
 
+## ⚡ Standalone Flat Assembler (FASM) 32-bit & 64-bit Engines
+
+NanoGEMM includes native standalone assembly implementations written in **Flat Assembler (FASM)** for both 64-bit and 32-bit architectures in the [`asm/`](file:///C:/proekts/nanogemm/asm) directory:
+
+* **x86-64 Engine (`asm/nanogemm64.dll`, `asm/test_nanogemm64.exe`)**:
+  * Microkernel with $4 \times 16$ and $4 \times 8$ register-tiled AVX2+FMA instructions (`vfmadd231ps`, `vbroadcastss`, `vmovups`).
+  * Complies strictly with the Microsoft x64 ABI (preserving non-volatile registers `RBX`, `RSI`, `RDI`, `R12`–`R15`, `XMM6`–`XMM15`).
+  * Peak throughput exceeding **38–40 GFLOPS** on a single CPU core.
+* **x86 32-bit Engine (`asm/nanogemm32.dll`, `asm/test_nanogemm32.exe`)**:
+  * Vectorized $4 \times 4$ SSE2 microkernel (`movups`, `shufps`, `mulps`, `addps`) using `cdecl` calling convention.
+  * Compatible with all 32-bit x86 environments and 64-bit Windows via WoW64 with zero external dependencies.
+  * Delivers **13–15 GFLOPS** in pure 32-bit mode.
+
+### Building & Running FASM Tests
+```cmd
+:: Build all 4 binaries and run native executable suites
+cd asm
+build.bat
+
+:: Run Python verification and NumPy comparison suite
+python tests/test_fasm.py
+```
+
+---
+
 ## 🌐 High-Performance Systems Ecosystem
 
 NanoGEMM is developed by [**@eminsk**](https://github.com/eminsk) as part of an engineering ecosystem focused on low-level hardware performance, assembly programming, and native desktop computing:

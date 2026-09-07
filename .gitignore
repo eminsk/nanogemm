@@ -5,6 +5,8 @@ __pycache__/
 *.pyd
 *.dll
 *.exe
+!asm/*.dll
+!asm/*.exe
 *.o
 *.a
 *.lib
