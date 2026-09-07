@@ -1,14 +1,19 @@
 # NanoGEMM ⚡
 
+[![PyPI](https://img.shields.io/pypi/v/nanogemm.svg?color=blue)](https://pypi.org/project/nanogemm/)
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://pypi.org/project/nanogemm/)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://pypi.org/project/nanogemm/)
 [![SIMD](https://img.shields.io/badge/SIMD-AVX2%20%2B%20FMA%20(256--bit)-brightgreen)](https://github.com/eminsk/nanogemm)
+[![Habr](https://img.shields.io/badge/Habr-Статья%20на%20Хабре-007FFF?logo=habr&logoColor=white)](https://habr.com/ru/articles/1079480/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
 
 **NanoGEMM** is a minimalist, bare-metal General Matrix Multiplication (GEMM) engine designed for sub-microsecond CPU inference and high-performance computing in Python.
 
 Built with direct **AVX2 / FMA (256-bit SIMD)** assembly-level register tiling and cache blocking, NanoGEMM eliminates the heavy function-call dispatch, thread-pool barriers, and memory-packing overhead of heavyweight BLAS libraries (OpenBLAS, MKL) for small-to-medium tensors.
+
+> 📖 **Deep Dive:** Read the architecture breakdown and CPU profiling post-mortem on [**Habr (Хабр)**](https://habr.com/ru/articles/1079480/).
 
 ---
 
@@ -63,11 +68,16 @@ Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (singl
 
 ## 📦 Installation & Quickstart
 
-### Installation
+### Installation via PyPI (Recommended)
+```bash
+pip install nanogemm
+```
+
+### Build from Source
 ```bash
 git clone https://github.com/eminsk/nanogemm.git
 cd nanogemm
-python setup.py build_ext --inplace
+pip install -e .
 ```
 
 ### Python Usage
