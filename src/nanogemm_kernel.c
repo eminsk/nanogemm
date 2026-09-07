@@ -92,10 +92,17 @@ static inline void sgemm_microkernel_4x8_neon(
 #endif
 
 #if defined(NANOGEMM_X86_AVX2)
+#if defined(__clang__) || defined(__GNUC__)
+    #define NANOGEMM_AVX2_TARGET __attribute__((target("avx2,fma")))
+#else
+    #define NANOGEMM_AVX2_TARGET
+#endif
+
 /* -------------------------------------------------------------
  * AVX2 + FMA 6x16 Microkernel
  * Computes a 6x16 tile of C from 6xK of A and Kx16 of B
  * ------------------------------------------------------------- */
+NANOGEMM_AVX2_TARGET
 static inline void sgemm_microkernel_6x16_avx2(
     int K,
     const float* A, int lda,
@@ -222,6 +229,9 @@ static inline void sgemm_edge_kernel(
 /* -------------------------------------------------------------
  * Cache-Blocked SGEMM Driver
  * ------------------------------------------------------------- */
+#if defined(NANOGEMM_X86_AVX2)
+NANOGEMM_AVX2_TARGET
+#endif
 NANOGEMM_API void nanogemm_sgemm(
     int M, int N, int K,
     float alpha,
