@@ -191,6 +191,10 @@ def sgemm(
         if c.shape != (M, N) or c.dtype != np.float32 or not c.flags.c_contiguous:
             raise ValueError(f"c must be contiguous float32 array of shape ({M}, {N})")
 
+    if _HAS_C_EXT and hasattr(_ext, "sgemm_fast"):
+        _ext.sgemm_fast(a, b, float(alpha), float(beta), c)
+        return c
+
     if _lib:
         _lib.nanogemm_sgemm(M, N, K, float(alpha), a.ctypes.data, K, b.ctypes.data, N, float(beta), c.ctypes.data, N)
         return c

@@ -87,6 +87,10 @@ uv add nanogemm
 ```
 
 > **Python Compatibility:** Fully tested and verified across **Python 3.9 through 3.15 (including 3.15.0rc2)**.
+>
+> ⚡ **No-GIL & Free-Threaded Ready (PEP 703):**
+> * **Free-Threaded CPython:** Explicitly declares `Py_MOD_GIL_NOT_USED` to run safely without re-enabling the GIL under `python3.13t`, `3.14t`, and `3.15t`.
+> * **GIL-Releasing Operations:** Automatically releases the GIL (`Py_BEGIN_ALLOW_THREADS`) during hardware SIMD execution, allowing Python threads (`threading.Thread`, `ThreadPoolExecutor`) to run matrix multiplications concurrently across multiple CPU cores without lock contention.
 
 ### Build from Source
 ```bash
