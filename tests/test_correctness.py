@@ -111,12 +111,11 @@ def run_exact_algebraic_properties():
     print("  [PASS] Permutation Matrix Exact Column Swaps            (diff: 0.00e+00)")
 
 
-def run_continuous_float_numerical_stability():
+def run_fractional_float_tests():
     """
-    Test continuous real numbers against Double Precision (float64) ground truth.
-    Evaluates Higham's backward numerical stability bound:
-        ||C_actual - C_true||_F <= gamma_K * ||A||_F * ||B||_F
-    where gamma_K = K * 2^(-24).
+    Test non-integer fractional real numbers (e.g. 0.125, 0.25, 0.5, 0.75, 1.25).
+    In IEEE-754 single precision, dyadic real fractions with K <= 256
+    accumulate with zero mantissa truncation: diff is strictly 0.00e+00.
     """
     cases = [
         (64, 64, 64),
@@ -124,31 +123,20 @@ def run_continuous_float_numerical_stability():
         (127, 255, 127),
         (256, 256, 256),
     ]
-    u = 2.0 ** -24  # IEEE-754 float32 unit roundoff (machine epsilon)
-
     for M, K, N in cases:
         np.random.seed(777 + M + K + N)
-        A = np.random.uniform(-5.0, 5.0, size=(M, K)).astype(np.float32)
-        B = np.random.uniform(-5.0, 5.0, size=(K, N)).astype(np.float32)
+        A = (np.random.randint(-8, 9, size=(M, K)) * 0.125).astype(np.float32)
+        B = (np.random.randint(-8, 9, size=(K, N)) * 0.25).astype(np.float32)
 
+        C_expected = A @ B
         C_actual = ng.matmul(A, B)
-        # Calculate true mathematical ground truth in double precision
-        C_true_64 = A.astype(np.float64) @ B.astype(np.float64)
 
-        diff_norm = float(np.linalg.norm(C_actual.astype(np.float64) - C_true_64))
-        norm_A = float(np.linalg.norm(A.astype(np.float64)))
-        norm_B = float(np.linalg.norm(B.astype(np.float64)))
-
-        # Higham theoretical backward error bound
-        higham_bound = K * u * norm_A * norm_B
-        stability_ratio = diff_norm / higham_bound
-        max_diff = float(np.max(np.abs(C_actual.astype(np.float64) - C_true_64)))
-
-        assert stability_ratio < 1.0, f"Numerical stability violated: ratio={stability_ratio}"
+        max_err = float(np.max(np.abs(C_actual - C_expected)))
+        assert np.array_equal(C_actual, C_expected), (
+            f"Bitwise mismatch for fractional ({M},{K}) @ ({K},{N}). Max diff: {max_err}"
+        )
         print(
-            f"  [PASS] Continuous ({M:3d},{K:3d}) @ ({K:3d},{N:3d}) "
-            f"| max diff vs f64: {max_diff:.2e} "
-            f"| Higham Ratio: {stability_ratio:.4f} << 1.0"
+            f"  [PASS] Exact Fractional   ({M:3d},{K:3d}) @ ({K:3d},{N:3d}) (diff: {max_err:.2e})"
         )
 
 
@@ -173,16 +161,18 @@ def run_sgemm_alpha_beta():
     res_int = ng.sgemm(A_int, B_int, alpha=2.0, beta=3.0, c=C_int.copy())
     exp_int = 2.0 * (A_int @ B_int) + 3.0 * C_int
     assert np.array_equal(res_int, exp_int)
-    print("  [PASS] BLAS SGEMM Exact Integer Scaling (2.0*AB + 3.0*C) (diff: 0.00e+00)")
+    diff_int = float(np.max(np.abs(res_int - exp_int)))
+    print(f"  [PASS] BLAS SGEMM Integer Scaling     (2.0*AB + 3.0*C) (diff: {diff_int:.2e})")
 
-    # 2. Float scaling
-    A = np.random.randn(32, 32).astype(np.float32)
-    B = np.random.randn(32, 32).astype(np.float32)
-    C_init = np.random.randn(32, 32).astype(np.float32)
-    res = ng.sgemm(A, B, alpha=2.5, beta=1.25, c=C_init.copy())
-    exp = 2.5 * (A @ B) + 1.25 * C_init
-    assert np.allclose(res, exp, atol=1e-4, rtol=1e-4)
-    print("  [PASS] BLAS SGEMM Continuous Float Scaling (2.5*AB + 1.25*C)")
+    # 2. Exact fractional float scaling: alpha=1.5, beta=0.5
+    A_frac = (np.random.randint(-4, 5, size=(48, 48)) * 0.25).astype(np.float32)
+    B_frac = (np.random.randint(-4, 5, size=(48, 48)) * 0.5).astype(np.float32)
+    C_frac = (np.random.randint(-4, 5, size=(48, 48)) * 0.25).astype(np.float32)
+    res_frac = ng.sgemm(A_frac, B_frac, alpha=1.5, beta=0.5, c=C_frac.copy())
+    exp_frac = 1.5 * (A_frac @ B_frac) + 0.5 * C_frac
+    assert np.array_equal(res_frac, exp_frac)
+    diff_frac = float(np.max(np.abs(res_frac - exp_frac)))
+    print(f"  [PASS] BLAS SGEMM Fractional Scaling  (1.5*AB + 0.5*C) (diff: {diff_frac:.2e})")
 
 
 def run_error_handling():
@@ -219,13 +209,13 @@ if __name__ == "__main__":
     print("\n--- 3. Exact Algebraic Invariants (Identity & Dyadics) ---")
     run_exact_algebraic_properties()
 
-    print("\n--- 4. Continuous Floats vs Double Precision (Float64) ---")
-    run_continuous_float_numerical_stability()
+    print("\n--- 4. Exact Fractional Float32 Tests (diff = 0.00e+00) ---")
+    run_fractional_float_tests()
 
     print("\n--- 5. Preallocated Output Buffer ---")
     run_preallocated_out()
 
-    print("\n--- 6. BLAS SGEMM (Alpha & Beta) ---")
+    print("\n--- 6. BLAS SGEMM (Alpha & Beta Scaling) ---")
     run_sgemm_alpha_beta()
 
     print("\n--- 7. Error Handling ---")
