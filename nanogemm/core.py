@@ -219,6 +219,17 @@ def matmul(
     np.ndarray
         Result of matrix multiplication (M, N) with float32 dtype.
     """
+    if backend is None and _HAS_C_EXT:
+        try:
+            if out is not None:
+                _ext.matmul_fast(a, b, out)
+                return out
+            res_out = np.empty((a.shape[0], b.shape[1]), dtype=np.float32)
+            _ext.matmul_fast(a, b, res_out)
+            return res_out
+        except (TypeError, ValueError):
+            pass
+
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError(
             f"Expected 2D arrays, got a.ndim={a.ndim} and b.ndim={b.ndim}"
