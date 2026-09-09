@@ -20,3 +20,5 @@ dist/
 htmlcov/
 .DS_Store
 Thumbs.db
+*habr*
+HABR*
