@@ -45,6 +45,31 @@ Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (singl
 
 ---
 
+## ⚖️ Architectural Comparison: NanoGEMM vs OpenBLAS vs LIBXSMM
+
+When evaluating CPU matrix multiplication engines, understanding the design trade-offs between **compilation models, binary footprint, dispatch latency, and target matrix shapes** is critical:
+
+| Feature / Metric | NanoGEMM | LIBXSMM | OpenBLAS / MKL |
+| :--- | :---: | :---: | :---: |
+| **Core Paradigm** | Static AOT Register Tiling ($6\times 16$, $4\times 16$, $2\times 16$) | Runtime JIT Machine-Code Generation | Multi-threaded Dynamic BLAS with Buffer Packing |
+| **Binary Footprint** | ⚡ **~100 KB** (ultra-lightweight single binary) | ~15–30 MB | ~30–50 MB |
+| **Code Generation** | **Ahead-of-Time (Zero-JIT)** | Runtime JIT code emission into executable pages | Ahead-of-Time |
+| **Security / Hardened OS (W^X)** | 🛡️ **100% Compliant** (No executable heap/stack required) | Requires writable & executable memory (`PROT_EXEC`) | 🛡️ 100% Compliant |
+| **External Dependencies** | **None** (pure C & FASM assembly, zero runtime deps) | C++ runtime, pthreads | OpenMP / pthreads, Fortran runtime |
+| **Python Invocation Latency** | **Sub-microsecond (< 1.5 µs)** via Buffer Protocol & GIL release | Requires custom wrappers or ctypes bindings | 3–5 µs (NumPy ufunc dispatch, C-API type checking) |
+| **Optimal Sweet Spot** | **Small tensors ($16 \times 16$ – $64 \times 64$) in Python / Edge AI** | Small-to-medium matrices in pure C/C++ | Large matrices ($512 \times 512$ – $4096 \times 4096+$) |
+| **Multi-Threading Model** | Single-threaded per call (use `ThreadPoolExecutor` without lock contention) | Single/Multi-threaded | Multi-threaded OpenMP thread pool |
+
+### 💡 Key Design Rationale:
+1. **NanoGEMM vs OpenBLAS / MKL on Small Tensors:**  
+   Traditional BLAS libraries are optimized for massive matrices ($1000 \times 1000+$). On small matrices ($16 \times 16$ to $64 \times 64$), the fixed overhead of thread synchronization, buffer packing, and NumPy ufunc argument sanitization takes 3–5 µs before arithmetic even begins. NanoGEMM eliminates this glue overhead completely, achieving sub-microsecond latency in Python.
+2. **NanoGEMM vs LIBXSMM:**  
+   LIBXSMM (Intel Labs) is the gold standard for small-matrix GEMM in pure C/C++ when runtime JIT code emission is permissible. NanoGEMM adopts a different engineering philosophy: **Zero-JIT, zero dynamic allocations, zero external dependencies, and a ~100 KB footprint**. NanoGEMM deploys seamlessly in hardened environments (where W^X / DEP security policies block runtime JIT emission) and installs instantly via standard Python wheels.
+3. **v0.3.3 Boundary Microkernel Acceleration:**  
+   In NanoGEMM v0.3.3, dedicated $4 \times 16$ and $2 \times 16$ boundary register tiles (plus $8$-wide column tiles) have been introduced. Standard square power-of-two matrices ($8 \times 8$, $16 \times 16$, $32 \times 32$, $64 \times 64$) now compute **100% inside AVX2+FMA vector registers with zero scalar tail fallback**.
+
+---
+
 ## 🛠 Architectural Design
 
 ### 1. Register Tiling ($6 \times 16$ Microkernel)

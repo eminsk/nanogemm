@@ -178,11 +178,264 @@ static inline void sgemm_microkernel_6x16_avx2(
 
     #undef STORE_ROW
 }
+
+/* -------------------------------------------------------------
+ * AVX2 + FMA 4x16 Microkernel (Boundary for M=4,16,28...)
+ * ------------------------------------------------------------- */
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_4x16_avx2(
+    int K,
+    const float* A, int lda,
+    const float* B, int ldb,
+    float* C, int ldc,
+    float alpha, float beta,
+    int is_first_k)
+{
+    __m256 c00 = _mm256_setzero_ps();
+    __m256 c01 = _mm256_setzero_ps();
+    __m256 c10 = _mm256_setzero_ps();
+    __m256 c11 = _mm256_setzero_ps();
+    __m256 c20 = _mm256_setzero_ps();
+    __m256 c21 = _mm256_setzero_ps();
+    __m256 c30 = _mm256_setzero_ps();
+    __m256 c31 = _mm256_setzero_ps();
+
+    for (int k = 0; k < K; ++k) {
+        __m256 b0 = _mm256_loadu_ps(&B[k * ldb]);
+        __m256 b1 = _mm256_loadu_ps(&B[k * ldb + 8]);
+
+        __m256 a0 = _mm256_set1_ps(A[0 * lda + k]);
+        c00 = _mm256_fmadd_ps(a0, b0, c00);
+        c01 = _mm256_fmadd_ps(a0, b1, c01);
+
+        __m256 a1 = _mm256_set1_ps(A[1 * lda + k]);
+        c10 = _mm256_fmadd_ps(a1, b0, c10);
+        c11 = _mm256_fmadd_ps(a1, b1, c11);
+
+        __m256 a2 = _mm256_set1_ps(A[2 * lda + k]);
+        c20 = _mm256_fmadd_ps(a2, b0, c20);
+        c21 = _mm256_fmadd_ps(a2, b1, c21);
+
+        __m256 a3 = _mm256_set1_ps(A[3 * lda + k]);
+        c30 = _mm256_fmadd_ps(a3, b0, c30);
+        c31 = _mm256_fmadd_ps(a3, b1, c31);
+    }
+
+    __m256 valpha = _mm256_set1_ps(alpha);
+
+    #define STORE_ROW_4(row, r0, r1) do { \
+        float* dst = &C[(row) * ldc]; \
+        if (is_first_k && beta == 0.0f) { \
+            _mm256_storeu_ps(dst, _mm256_mul_ps(r0, valpha)); \
+            _mm256_storeu_ps(dst + 8, _mm256_mul_ps(r1, valpha)); \
+        } else { \
+            __m256 cur0 = _mm256_loadu_ps(dst); \
+            __m256 cur1 = _mm256_loadu_ps(dst + 8); \
+            __m256 vbeta = _mm256_set1_ps(beta); \
+            _mm256_storeu_ps(dst, _mm256_fmadd_ps(r0, valpha, _mm256_mul_ps(cur0, vbeta))); \
+            _mm256_storeu_ps(dst + 8, _mm256_fmadd_ps(r1, valpha, _mm256_mul_ps(cur1, vbeta))); \
+        } \
+    } while (0)
+
+    STORE_ROW_4(0, c00, c01);
+    STORE_ROW_4(1, c10, c11);
+    STORE_ROW_4(2, c20, c21);
+    STORE_ROW_4(3, c30, c31);
+
+    #undef STORE_ROW_4
+}
+
+/* -------------------------------------------------------------
+ * AVX2 + FMA 2x16 Microkernel (Boundary for M=2,8,14,32...)
+ * ------------------------------------------------------------- */
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_2x16_avx2(
+    int K,
+    const float* A, int lda,
+    const float* B, int ldb,
+    float* C, int ldc,
+    float alpha, float beta,
+    int is_first_k)
+{
+    __m256 c00 = _mm256_setzero_ps();
+    __m256 c01 = _mm256_setzero_ps();
+    __m256 c10 = _mm256_setzero_ps();
+    __m256 c11 = _mm256_setzero_ps();
+
+    for (int k = 0; k < K; ++k) {
+        __m256 b0 = _mm256_loadu_ps(&B[k * ldb]);
+        __m256 b1 = _mm256_loadu_ps(&B[k * ldb + 8]);
+
+        __m256 a0 = _mm256_set1_ps(A[0 * lda + k]);
+        c00 = _mm256_fmadd_ps(a0, b0, c00);
+        c01 = _mm256_fmadd_ps(a0, b1, c01);
+
+        __m256 a1 = _mm256_set1_ps(A[1 * lda + k]);
+        c10 = _mm256_fmadd_ps(a1, b0, c10);
+        c11 = _mm256_fmadd_ps(a1, b1, c11);
+    }
+
+    __m256 valpha = _mm256_set1_ps(alpha);
+
+    #define STORE_ROW_2(row, r0, r1) do { \
+        float* dst = &C[(row) * ldc]; \
+        if (is_first_k && beta == 0.0f) { \
+            _mm256_storeu_ps(dst, _mm256_mul_ps(r0, valpha)); \
+            _mm256_storeu_ps(dst + 8, _mm256_mul_ps(r1, valpha)); \
+        } else { \
+            __m256 cur0 = _mm256_loadu_ps(dst); \
+            __m256 cur1 = _mm256_loadu_ps(dst + 8); \
+            __m256 vbeta = _mm256_set1_ps(beta); \
+            _mm256_storeu_ps(dst, _mm256_fmadd_ps(r0, valpha, _mm256_mul_ps(cur0, vbeta))); \
+            _mm256_storeu_ps(dst + 8, _mm256_fmadd_ps(r1, valpha, _mm256_mul_ps(cur1, vbeta))); \
+        } \
+    } while (0)
+
+    STORE_ROW_2(0, c00, c01);
+    STORE_ROW_2(1, c10, c11);
+
+    #undef STORE_ROW_2
+}
+
+/* -------------------------------------------------------------
+ * AVX2 + FMA 6x8, 4x8, 2x8 Microkernels (For N=8 boundaries)
+ * ------------------------------------------------------------- */
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_6x8_avx2(
+    int K,
+    const float* A, int lda,
+    const float* B, int ldb,
+    float* C, int ldc,
+    float alpha, float beta,
+    int is_first_k)
+{
+    __m256 c0 = _mm256_setzero_ps();
+    __m256 c1 = _mm256_setzero_ps();
+    __m256 c2 = _mm256_setzero_ps();
+    __m256 c3 = _mm256_setzero_ps();
+    __m256 c4 = _mm256_setzero_ps();
+    __m256 c5 = _mm256_setzero_ps();
+
+    for (int k = 0; k < K; ++k) {
+        __m256 b0 = _mm256_loadu_ps(&B[k * ldb]);
+
+        c0 = _mm256_fmadd_ps(_mm256_set1_ps(A[0 * lda + k]), b0, c0);
+        c1 = _mm256_fmadd_ps(_mm256_set1_ps(A[1 * lda + k]), b0, c1);
+        c2 = _mm256_fmadd_ps(_mm256_set1_ps(A[2 * lda + k]), b0, c2);
+        c3 = _mm256_fmadd_ps(_mm256_set1_ps(A[3 * lda + k]), b0, c3);
+        c4 = _mm256_fmadd_ps(_mm256_set1_ps(A[4 * lda + k]), b0, c4);
+        c5 = _mm256_fmadd_ps(_mm256_set1_ps(A[5 * lda + k]), b0, c5);
+    }
+
+    __m256 valpha = _mm256_set1_ps(alpha);
+
+    #define STORE_ROW_6x8(row, r0) do { \
+        float* dst = &C[(row) * ldc]; \
+        if (is_first_k && beta == 0.0f) { \
+            _mm256_storeu_ps(dst, _mm256_mul_ps(r0, valpha)); \
+        } else { \
+            __m256 cur0 = _mm256_loadu_ps(dst); \
+            __m256 vbeta = _mm256_set1_ps(beta); \
+            _mm256_storeu_ps(dst, _mm256_fmadd_ps(r0, valpha, _mm256_mul_ps(cur0, vbeta))); \
+        } \
+    } while (0)
+
+    STORE_ROW_6x8(0, c0);
+    STORE_ROW_6x8(1, c1);
+    STORE_ROW_6x8(2, c2);
+    STORE_ROW_6x8(3, c3);
+    STORE_ROW_6x8(4, c4);
+    STORE_ROW_6x8(5, c5);
+
+    #undef STORE_ROW_6x8
+}
+
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_4x8_avx2(
+    int K,
+    const float* A, int lda,
+    const float* B, int ldb,
+    float* C, int ldc,
+    float alpha, float beta,
+    int is_first_k)
+{
+    __m256 c0 = _mm256_setzero_ps();
+    __m256 c1 = _mm256_setzero_ps();
+    __m256 c2 = _mm256_setzero_ps();
+    __m256 c3 = _mm256_setzero_ps();
+
+    for (int k = 0; k < K; ++k) {
+        __m256 b0 = _mm256_loadu_ps(&B[k * ldb]);
+
+        c0 = _mm256_fmadd_ps(_mm256_set1_ps(A[0 * lda + k]), b0, c0);
+        c1 = _mm256_fmadd_ps(_mm256_set1_ps(A[1 * lda + k]), b0, c1);
+        c2 = _mm256_fmadd_ps(_mm256_set1_ps(A[2 * lda + k]), b0, c2);
+        c3 = _mm256_fmadd_ps(_mm256_set1_ps(A[3 * lda + k]), b0, c3);
+    }
+
+    __m256 valpha = _mm256_set1_ps(alpha);
+
+    #define STORE_ROW_4x8(row, r0) do { \
+        float* dst = &C[(row) * ldc]; \
+        if (is_first_k && beta == 0.0f) { \
+            _mm256_storeu_ps(dst, _mm256_mul_ps(r0, valpha)); \
+        } else { \
+            __m256 cur0 = _mm256_loadu_ps(dst); \
+            __m256 vbeta = _mm256_set1_ps(beta); \
+            _mm256_storeu_ps(dst, _mm256_fmadd_ps(r0, valpha, _mm256_mul_ps(cur0, vbeta))); \
+        } \
+    } while (0)
+
+    STORE_ROW_4x8(0, c0);
+    STORE_ROW_4x8(1, c1);
+    STORE_ROW_4x8(2, c2);
+    STORE_ROW_4x8(3, c3);
+
+    #undef STORE_ROW_4x8
+}
+
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_2x8_avx2(
+    int K,
+    const float* A, int lda,
+    const float* B, int ldb,
+    float* C, int ldc,
+    float alpha, float beta,
+    int is_first_k)
+{
+    __m256 c0 = _mm256_setzero_ps();
+    __m256 c1 = _mm256_setzero_ps();
+
+    for (int k = 0; k < K; ++k) {
+        __m256 b0 = _mm256_loadu_ps(&B[k * ldb]);
+
+        c0 = _mm256_fmadd_ps(_mm256_set1_ps(A[0 * lda + k]), b0, c0);
+        c1 = _mm256_fmadd_ps(_mm256_set1_ps(A[1 * lda + k]), b0, c1);
+    }
+
+    __m256 valpha = _mm256_set1_ps(alpha);
+
+    #define STORE_ROW_2x8(row, r0) do { \
+        float* dst = &C[(row) * ldc]; \
+        if (is_first_k && beta == 0.0f) { \
+            _mm256_storeu_ps(dst, _mm256_mul_ps(r0, valpha)); \
+        } else { \
+            __m256 cur0 = _mm256_loadu_ps(dst); \
+            __m256 vbeta = _mm256_set1_ps(beta); \
+            _mm256_storeu_ps(dst, _mm256_fmadd_ps(r0, valpha, _mm256_mul_ps(cur0, vbeta))); \
+        } \
+    } while (0)
+
+    STORE_ROW_2x8(0, c0);
+    STORE_ROW_2x8(1, c1);
+
+    #undef STORE_ROW_2x8
+}
 #endif
 
 
 /* -------------------------------------------------------------
- * Fallback Edge Kernel (handles remainders where M<6 or N<16)
+ * Fallback Edge Kernel (handles odd non-aligned remainders)
  * ------------------------------------------------------------- */
 static inline void sgemm_edge_kernel(
     int m_count, int n_count, int K,
@@ -197,22 +450,12 @@ static inline void sgemm_edge_kernel(
             float sum = 0.0f;
             int k = 0;
 
-            #if defined(__AVX2__)
-            __m256 vsum = _mm256_setzero_ps();
-            for (; k <= K - 8; k += 8) {
-                __m256 va = _mm256_loadu_ps(&A[i * lda + k]);
-                __m256 vb = _mm256_set_ps(
-                    B[(k + 7) * ldb + j], B[(k + 6) * ldb + j],
-                    B[(k + 5) * ldb + j], B[(k + 4) * ldb + j],
-                    B[(k + 3) * ldb + j], B[(k + 2) * ldb + j],
-                    B[(k + 1) * ldb + j], B[(k + 0) * ldb + j]);
-                vsum = _mm256_fmadd_ps(va, vb, vsum);
+            for (; k <= K - 4; k += 4) {
+                sum += A[i * lda + k + 0] * B[(k + 0) * ldb + j];
+                sum += A[i * lda + k + 1] * B[(k + 1) * ldb + j];
+                sum += A[i * lda + k + 2] * B[(k + 2) * ldb + j];
+                sum += A[i * lda + k + 3] * B[(k + 3) * ldb + j];
             }
-            float tmp[8];
-            _mm256_storeu_ps(tmp, vsum);
-            sum = tmp[0] + tmp[1] + tmp[2] + tmp[3] + tmp[4] + tmp[5] + tmp[6] + tmp[7];
-            #endif
-
             for (; k < K; ++k) {
                 sum += A[i * lda + k] * B[k * ldb + j];
             }
@@ -288,10 +531,19 @@ NANOGEMM_API void nanogemm_sgemm(
                 }
 #elif defined(NANOGEMM_X86_AVX2)
                 int i = 0;
+                // 1. Process 6-row blocks
                 for (; i <= m_block - 6; i += 6) {
                     int j = 0;
                     for (; j <= n_block - 16; j += 16) {
                         sgemm_microkernel_6x16_avx2(
+                            k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                    for (; j <= n_block - 8; j += 8) {
+                        sgemm_microkernel_6x8_avx2(
                             k_block,
                             &A_tile[i * lda], lda,
                             &B_tile[j], ldb,
@@ -307,6 +559,63 @@ NANOGEMM_API void nanogemm_sgemm(
                             alpha, current_beta, is_first_k);
                     }
                 }
+                // 2. Process 4-row boundary blocks (e.g. 16 = 6 + 6 + 4)
+                for (; i <= m_block - 4; i += 4) {
+                    int j = 0;
+                    for (; j <= n_block - 16; j += 16) {
+                        sgemm_microkernel_4x16_avx2(
+                            k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                    for (; j <= n_block - 8; j += 8) {
+                        sgemm_microkernel_4x8_avx2(
+                            k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                    if (j < n_block) {
+                        sgemm_edge_kernel(
+                            4, n_block - j, k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                }
+                // 3. Process 2-row boundary blocks (e.g. 32 = 6*5 + 2)
+                for (; i <= m_block - 2; i += 2) {
+                    int j = 0;
+                    for (; j <= n_block - 16; j += 16) {
+                        sgemm_microkernel_2x16_avx2(
+                            k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                    for (; j <= n_block - 8; j += 8) {
+                        sgemm_microkernel_2x8_avx2(
+                            k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                    if (j < n_block) {
+                        sgemm_edge_kernel(
+                            2, n_block - j, k_block,
+                            &A_tile[i * lda], lda,
+                            &B_tile[j], ldb,
+                            &C_tile[i * ldc + j], ldc,
+                            alpha, current_beta, is_first_k);
+                    }
+                }
+                // 4. Remaining 1 row for odd dimensions
                 if (i < m_block) {
                     sgemm_edge_kernel(
                         m_block - i, n_block, k_block,
