@@ -159,6 +159,21 @@ res = ng.sgemm(A, B, alpha=2.0, beta=0.5, c=out)
 
 ---
 
+## 🚀 Interactive Google Colab Demo
+
+Run NanoGEMM benchmarks interactively in your browser with zero local setup:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
+
+The [Interactive Benchmark Notebook](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb) demonstrates:
+- **Zero-Setup Installation & Hardware ISA Detection:** Compiles native C/AVX2 on Google Colab CPU in seconds.
+- **100% Numerical Accuracy Verification:** Tests square, non-square, prime dimensions, and BLAS SGEMM against OpenBLAS.
+- **Microsecond Latency & GFLOPS Benchmark:** Measures speedup vs NumPy across $16\times 16 \dots 128\times 128$ matrices (up to 2.8x faster).
+- **Interactive Performance Plotting:** Side-by-side latency & speedup bar/line charts using Matplotlib.
+- **Real-Time Edge AI Loop:** Demonstrates 100,000 iterations of zero-allocation in-place multiplication (`out=C`).
+
+---
+
 ## 🧪 Testing & Verification
 
 Run the comprehensive correctness test suite comparing NanoGEMM with NumPy reference outputs across random uniforms, normals, non-square dimensions, and prime shapes:
