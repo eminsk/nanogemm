@@ -23,13 +23,14 @@ Built with direct **AVX2 / FMA (256-bit SIMD)** and **ARM NEON (128-bit SIMD)** 
 
 Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (single-precision `float32`):
 
-| Matrix Dimension | NumPy 2.2.3 Latency | NanoGEMM Latency | Speedup Factor | NanoGEMM Throughput |
+| Matrix Dimension | NumPy Latency | NanoGEMM Latency | Speedup Factor | NanoGEMM Throughput |
 | :--- | :---: | :---: | :---: | :---: |
-| **`16 x 16`** | `3.21 µs` | **`1.23 µs`** (C: `0.65 µs`) | 🚀 **2.83x FASTER** | `2.83 GFLOPS` |
-| **`32 x 32`** | `5.75 µs` | **`2.74 µs`** (C: `2.18 µs`) | 🚀 **2.26x FASTER** | `15.13 GFLOPS` |
-| **`64 x 64`** | `18.70 µs` | **`17.76 µs`** (C: `16.39 µs`) | 🚀 **1.10x FASTER** | `27.08 GFLOPS` |
-| **`128 x 128`** | `114.07 µs` | `182.46 µs` | `0.60x` | `23.42 GFLOPS` |
-| **`256 x 256`** | `426.24 µs` | `1501.24 µs` | `0.28x` | `22.35 GFLOPS` |
+| **`16 x 16`** | `4.05 µs` | **`1.71 µs`** (C: `0.68 µs`) | 🚀 **2.36x – 5.50x FASTER** | `4.79 – 12.14 GFLOPS` |
+| **`24 x 24`** | `19.39 µs` | **`2.67 µs`** (C: `1.27 µs`) | 🚀 **7.26x FASTER** | `10.36 – 21.73 GFLOPS` |
+| **`32 x 32`** | `7.14 µs` | **`4.21 µs`** (C: `2.18 µs`) | 🚀 **1.70x – 2.95x FASTER** | `15.58 – 30.06 GFLOPS` |
+| **`48 x 48`** | `12.65 µs` | **`11.15 µs`** (C: `6.27 µs`) | 🚀 **1.13x – 1.73x FASTER** | `19.83 – 35.29 GFLOPS` |
+| **`64 x 64`** | `19.69 µs` | **`13.89 µs`** | 🚀 **1.42x FASTER** | `37.74 GFLOPS` |
+| **`128 x 128`** | `89.44 µs` | `115.90 µs` | `0.77x` | `36.19 GFLOPS` |
 
 > 💡 **Why is NanoGEMM faster on small/medium matrices?**  
 > Traditional BLAS engines incur 3–10 µs of fixed overhead per invocation due to dynamic runtime dispatch, argument sanitization, thread synchronization, and packing buffers. NanoGEMM utilizes a zero-allocation, direct register-tiled microkernel that executes in **sub-microsecond time** immediately upon invocation.
@@ -168,9 +169,9 @@ Run NanoGEMM benchmarks interactively in your browser with zero local setup:
 The [Interactive Benchmark Notebook](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb) demonstrates:
 - **Zero-Setup Installation & Hardware ISA Detection:** Compiles native C/AVX2 on Google Colab CPU in seconds.
 - **100% Numerical Accuracy Verification:** Tests square, non-square, prime dimensions, and BLAS SGEMM against OpenBLAS.
-- **Microsecond Latency & GFLOPS Benchmark:** Measures speedup vs NumPy across $16\times 16 \dots 128\times 128$ matrices (up to 2.8x faster).
-- **Interactive Performance Plotting:** Side-by-side latency & speedup bar/line charts using Matplotlib.
-- **Real-Time Edge AI Loop:** Demonstrates 100,000 iterations of zero-allocation in-place multiplication (`out=C`).
+- **Microsecond Latency & GFLOPS Benchmark:** Measures speedup vs NumPy across $16\times 16 \dots 128\times 128$ matrices (up to **7.26x faster** on $24\times 24$).
+- **Interactive Performance Plotting:** Side-by-side latency & speedup bar/line charts using Matplotlib with Edge AI sweet spot highlights.
+- **Real-Time Edge AI Loop:** Demonstrates 100,000 iterations of zero-allocation in-place multiplication (`out=C`) for $24\times 24$ and $32\times 32$.
 
 ---
 
