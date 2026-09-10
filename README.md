@@ -70,8 +70,8 @@ When evaluating CPU matrix multiplication engines, understanding the design trad
    Traditional BLAS libraries are optimized for massive matrices ($1000 \times 1000+$). On small matrices ($16 \times 16$ to $64 \times 64$), the fixed overhead of thread synchronization, buffer packing, and NumPy ufunc argument sanitization takes 3–5 µs before arithmetic even begins. NanoGEMM eliminates this glue overhead completely, achieving sub-microsecond latency in Python.
 2. **NanoGEMM vs LIBXSMM:**  
    LIBXSMM (Intel Labs) is the gold standard for small-matrix GEMM in pure C/C++ when runtime JIT code emission is permissible. NanoGEMM adopts a different engineering philosophy: **Zero-JIT, zero dynamic allocations, zero external dependencies, and a ~100 KB footprint**. NanoGEMM deploys seamlessly in hardened environments (where W^X / DEP security policies block runtime JIT emission) and installs instantly via standard Python wheels.
-3. **v0.3.3 Boundary Microkernel Acceleration:**  
-   In NanoGEMM v0.3.3, dedicated $4 \times 16$ and $2 \times 16$ boundary register tiles (plus $8$-wide column tiles) have been introduced. Standard square power-of-two matrices ($8 \times 8$, $16 \times 16$, $32 \times 32$, $64 \times 64$) now compute **100% inside AVX2+FMA vector registers with zero scalar tail fallback**.
+3. **v0.3.4 Boundary Microkernel Acceleration & Colab Validation:**  
+   In NanoGEMM v0.3.4, dedicated $4 \times 16$ and $2 \times 16$ boundary register tiles (plus $8$-wide column tiles) are introduced. Standard square power-of-two matrices ($8 \times 8$, $16 \times 16$, $32 \times 32$, $64 \times 64$) now compute **100% inside AVX2+FMA vector registers with zero scalar tail fallback**, verified live in Google Colab.
 
 ---
 
