@@ -32,6 +32,26 @@ Measured on **Intel/AMD x86-64 CPU (AVX2 + FMA)** against **NumPy 2.2.3** (singl
 | **`64 x 64`** | `19.69 µs` | **`13.89 µs`** | 🚀 **1.42x FASTER** | `37.74 GFLOPS` |
 | **`128 x 128`** | `89.44 µs` | `115.90 µs` | `0.77x` | `36.19 GFLOPS` |
 
+### ⚡ Quantized INT8 SIMD GEMM Performance (`matmul_int8`)
+Measured live on **Google Colab CPU (AVX2)** against **NumPy** (`int8 x int8 -> int32`):
+
+| Matrix Dimension | NumPy Latency | NanoGEMM INT8 | Speedup Factor | NanoGEMM Throughput |
+| :--- | :---: | :---: | :---: | :---: |
+| **`16 x 16`** | `6.71 µs` | **`4.57 µs`** | 🚀 **1.47x FASTER** | `1.79 GOP/s` |
+| **`32 x 32`** | `40.02 µs` | **`4.99 µs`** | 🚀 **8.03x FASTER** | `13.14 GOP/s` |
+| **`64 x 64`** | `303.97 µs` | **`28.88 µs`** | 🚀 **10.53x FASTER** | `18.16 GOP/s` |
+| **`128 x 128`** | `2524.86 µs` | **`221.79 µs`** | 🚀 **11.38x FASTER** | `18.91 GOP/s` |
+
+### 🧠 Batched Matrix Multiplication (BMM) for Transformer Attention (`bmm`)
+Measured live on **Google Colab CPU** (Multi-Head Attention $Q @ K^T$ shapes):
+
+| Attention Shape (Heads, Seq, Dim) | NumPy Latency | NanoGEMM BMM | Speedup Factor |
+| :--- | :---: | :---: | :---: |
+| **`Heads=8, Seq=32, Dim=32`** | `25.48 µs` | **`14.96 µs`** | 🚀 **1.70x FASTER** |
+| **`Heads=16, Seq=32, Dim=64`** | `74.84 µs` | **`50.56 µs`** | 🚀 **1.48x FASTER** |
+| **`Heads=32, Seq=64, Dim=64`** | `450.56 µs` | **`388.69 µs`** | 🚀 **1.16x FASTER** |
+| **`Heads=64, Seq=32, Dim=32`** | `148.62 µs` | **`106.96 µs`** | 🚀 **1.39x FASTER** |
+
 > 💡 **Why is NanoGEMM faster on small/medium matrices?**  
 > Traditional BLAS engines incur 3–10 µs of fixed overhead per invocation due to dynamic runtime dispatch, argument sanitization, thread synchronization, and packing buffers. NanoGEMM utilizes a zero-allocation, direct register-tiled microkernel that executes in **sub-microsecond time** immediately upon invocation.
 
