@@ -103,9 +103,24 @@ def run_error_handling():
     except ValueError:
         pass
 
+    # 1D is invalid
     try:
-        ng.matmul(np.ones((2, 2, 2)), np.ones((2, 2)))
-        assert False, "Expected ValueError on non-2D input"
+        ng.matmul(np.ones((2,)), np.ones((2, 2)))
+        assert False, "Expected ValueError on 1D input"
+    except ValueError:
+        pass
+
+    # 5D is unsupported
+    try:
+        ng.matmul(np.ones((2, 2, 2, 2, 2)), np.ones((2, 2, 2, 2, 2)))
+        assert False, "Expected ValueError on 5D input"
+    except ValueError:
+        pass
+
+    # Batch dimension mismatch
+    try:
+        ng.matmul(np.ones((2, 4, 4)), np.ones((3, 4, 4)))
+        assert False, "Expected ValueError on batch mismatch"
     except ValueError:
         pass
 

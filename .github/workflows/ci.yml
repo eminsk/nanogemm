@@ -35,6 +35,7 @@ jobs:
     - name: Run Test Suite
       run: |
         python tests/test_correctness.py
+        python tests/test_bmm_int8.py
 
     - name: Run Benchmarks
       run: |
