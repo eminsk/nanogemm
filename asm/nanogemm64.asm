@@ -29,9 +29,12 @@ isa_str db 'AVX2+FMA (FASM x86-64, 256-bit SIMD)', 0
 
 section '.edata' export data readable
 export 'nanogemm64.dll',\
-       nanogemm_matmul,   'nanogemm_matmul',\
-       nanogemm_sgemm,    'nanogemm_sgemm',\
-       nanogemm_simd_isa, 'nanogemm_simd_isa'
+       nanogemm_matmul,       'nanogemm_matmul',\
+       nanogemm_sgemm,        'nanogemm_sgemm',\
+       nanogemm_bmm,          'nanogemm_bmm',\
+       nanogemm_matmul_int8,  'nanogemm_matmul_int8',\
+       nanogemm_gemm_i8i8i32, 'nanogemm_gemm_i8i8i32',\
+       nanogemm_simd_isa,     'nanogemm_simd_isa'
 
 section '.reloc' fixups data readable discardable
 if $=$$

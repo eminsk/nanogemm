@@ -19,6 +19,8 @@ section '.data' data readable writeable
     test6_msg   db '  [TEST 6] 128x128 Benchmark: ', 0
     pass_str    db 'PASS', 13, 10, 0
     fail_str    db 'FAIL (Diff too large!)', 13, 10, 0
+    test7_msg   db '  [TEST 7] Batched GEMM (BMM) 4x(16x16): ', 0
+    test8_msg   db '  [TEST 8] Quantized INT8 SIMD GEMM 16x16: ', 0
     bench_fmt   db 'PASS (Elapsed: %u us, Approx %u MFLOPS)', 13, 10, 0
     all_ok_msg  db '--------------------------------------------------------------------', 13, 10
                 db '  ALL 64-BIT FASM NATIVE TESTS PASSED (100%% Accuracy)!', 13, 10
@@ -42,7 +44,7 @@ section '.text' code readable executable
 include 'nanogemm64_kernel.inc'
 
 start:
-    sub rsp, 40h
+    sub rsp, 80h
 
     ; Initialize high resolution timer frequency
     lea rcx, [freq]
@@ -340,6 +342,99 @@ start:
     mov rdx, rsi
     mov r8, r9
     call [printf]
+
+    ; -------------------------------------------------------------------------
+    ; TEST 7: Batched GEMM (BMM) 4x(16x16)
+    ; -------------------------------------------------------------------------
+    lea rcx, [test7_msg]
+    call [printf]
+
+    lea rdi, [mat_A]
+    mov ecx, 1024
+    mov eax, 3F800000h              ; 1.0f
+    rep stosd
+
+    lea rdi, [mat_B]
+    mov ecx, 1024
+    mov eax, 40000000h              ; 2.0f
+    rep stosd
+
+    lea rdi, [mat_C]
+    mov ecx, 1024
+    xor eax, eax
+    rep stosd
+
+    mov ecx, 4                      ; batch_count
+    mov edx, 16                     ; M
+    mov r8d, 16                     ; N
+    mov r9d, 16                     ; K
+    lea rax, [mat_A]
+    mov [rsp + 20h], rax            ; A
+    lea rax, [mat_B]
+    mov [rsp + 28h], rax            ; B
+    lea rax, [mat_C]
+    mov [rsp + 30h], rax            ; C
+    mov qword [rsp + 38h], 256      ; stride_a
+    mov qword [rsp + 40h], 256      ; stride_b
+    mov qword [rsp + 48h], 256      ; stride_c
+    call nanogemm_bmm
+
+    cmp dword [mat_C], 42000000h
+    jne .fail7
+    cmp dword [mat_C + 4092], 42000000h
+    jne .fail7
+
+    lea rcx, [pass_str]
+    call [printf]
+    jmp @f
+.fail7:
+    lea rcx, [fail_str]
+    call [printf]
+@@:
+
+    ; -------------------------------------------------------------------------
+    ; TEST 8: Quantized INT8 SIMD GEMM 16x16
+    ; -------------------------------------------------------------------------
+    lea rcx, [test8_msg]
+    call [printf]
+
+    lea rdi, [mat_A]
+    mov ecx, 256
+    mov al, 2
+    rep stosb
+
+    lea rdi, [mat_B]
+    mov ecx, 256
+    mov al, 3
+    rep stosb
+
+    lea rdi, [mat_C]
+    mov ecx, 256
+    xor eax, eax
+    rep stosd
+
+    mov ecx, 16
+    mov edx, 16
+    mov r8d, 16
+    lea r9, [mat_A]
+    lea rax, [mat_B]
+    mov [rsp + 20h], rax
+    lea rax, [mat_C]
+    mov [rsp + 28h], rax
+    call nanogemm_gemm_i8i8i32
+
+    cmp dword [mat_C], 96
+    jne .fail8
+    cmp dword [mat_C + 255*4], 96
+    jne .fail8
+
+    lea rcx, [pass_str]
+    call [printf]
+    jmp @f
+.fail8:
+    lea rcx, [fail_str]
+    call [printf]
+@@:
 
     lea rcx, [all_ok_msg]
     call [printf]

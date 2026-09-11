@@ -582,3 +582,487 @@ nanogemm_sgemm:
     pop rbx
     pop rbp
     ret
+
+
+; =============================================================================
+; void nanogemm_bmm(int batch_count, int M, int N, int K,
+;                   const float* A, const float* B, float* C,
+;                   int64_t stride_a, int64_t stride_b, int64_t stride_c)
+;
+; Windows x64 ABI:
+; RCX = batch_count
+; RDX = M
+; R8  = N
+; R9  = K
+; Stack:
+; [RSP + 40] = A
+; [RSP + 48] = B
+; [RSP + 56] = C
+; [RSP + 64] = stride_a (int64)
+; [RSP + 72] = stride_b (int64)
+; [RSP + 80] = stride_c (int64)
+; =============================================================================
+nanogemm_bmm:
+    push rbp
+    mov rbp, rsp
+
+    mov [rbp + 16], rcx     ; batch_count
+    mov [rbp + 24], rdx     ; M
+    mov [rbp + 32], r8      ; N
+    mov [rbp + 40], r9      ; K
+
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 72             ; 32 shadow + 16 args + 24 local storage (aligned to 16)
+
+    mov eax, [rbp + 16]
+    test eax, eax
+    jle .bmm_done
+
+    mov rbx, [rbp + 16]     ; batch_count
+    mov r12, [rbp + 48]     ; cur_A = A
+    mov r13, [rbp + 56]     ; cur_B = B
+    mov r14, [rbp + 64]     ; cur_C = C
+
+    ; Convert element strides to byte strides: stride * 4
+    mov rsi, [rbp + 72]     ; stride_a
+    shl rsi, 2
+    mov rdi, [rbp + 80]     ; stride_b
+    shl rdi, 2
+    mov rax, [rbp + 88]     ; stride_c
+    shl rax, 2
+    mov [rsp + 48], rax     ; local stride_c in bytes
+
+    xor r15, r15            ; batch index b = 0
+
+.bmm_batch_loop:
+    movsxd rcx, dword [rbp + 24]    ; M
+    movsxd rdx, dword [rbp + 32]    ; N
+    movsxd r8,  dword [rbp + 40]    ; K
+    mov r9, r12                     ; cur_A
+    mov [rsp + 32], r13             ; cur_B (5th arg)
+    mov [rsp + 40], r14             ; cur_C (6th arg)
+
+    call nanogemm_matmul
+
+    add r12, rsi                    ; cur_A += stride_a * 4
+    add r13, rdi                    ; cur_B += stride_b * 4
+    add r14, [rsp + 48]             ; cur_C += stride_c * 4
+
+    inc r15
+    cmp r15, rbx
+    jl .bmm_batch_loop
+
+.bmm_done:
+    add rsp, 72
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    pop rbp
+    ret
+
+
+; =============================================================================
+; void nanogemm_gemm_i8i8i32(int M, int N, int K,
+;                            const int8_t* A, const int8_t* B, int32_t* C)
+;
+; Windows x64 ABI:
+; RCX = M, RDX = N, R8 = K, R9 = A, [RSP+40] = B, [RSP+48] = C
+; =============================================================================
+nanogemm_gemm_i8i8i32:
+nanogemm_matmul_int8:
+    push rbp
+    mov rbp, rsp
+
+    mov [rbp + 16], rcx     ; M
+    mov [rbp + 24], rdx     ; N
+    mov [rbp + 32], r8      ; K
+    mov [rbp + 40], r9      ; A
+
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 280
+
+    ; Save non-volatile XMM registers (xmm6 - xmm15)
+    movups [rsp + 0],   xmm6
+    movups [rsp + 16],  xmm7
+    movups [rsp + 32],  xmm8
+    movups [rsp + 48],  xmm9
+    movups [rsp + 64],  xmm10
+    movups [rsp + 80],  xmm11
+    movups [rsp + 96],  xmm12
+    movups [rsp + 112], xmm13
+    movups [rsp + 128], xmm14
+    movups [rsp + 144], xmm15
+
+    mov eax, [rbp + 16]     ; M
+    test eax, eax
+    jle .i8_done
+    mov eax, [rbp + 24]     ; N
+    test eax, eax
+    jle .i8_done
+    mov eax, [rbp + 32]     ; K
+    test eax, eax
+    jle .i8_done
+
+    movsxd rax, dword [rbp + 32]    ; K
+    mov [rsp + 160], rax            ; stride_A = K (bytes)
+
+    movsxd rax, dword [rbp + 24]    ; N
+    mov [rsp + 168], rax            ; stride_B = N (bytes)
+
+    shl rax, 2                      ; N * 4
+    mov [rsp + 176], rax            ; stride_C = N * 4 (bytes)
+
+    movsxd r10, dword [rbp + 32]    ; K
+
+    xor esi, esi                    ; i = 0
+
+.i8_row_4:
+    lea eax, [esi + 4]
+    cmp eax, dword [rbp + 16]       ; i + 4 <= M?
+    jg .i8_row_tail
+
+    ; Calculate row pointers for A (int8)
+    mov rax, rsi
+    imul rax, [rsp + 160]
+    mov r8, [rbp + 40]              ; A
+    add r8, rax
+    mov [rsp + 184], r8             ; row 0
+    add r8, [rsp + 160]
+    mov [rsp + 192], r8             ; row 1
+    add r8, [rsp + 160]
+    mov [rsp + 200], r8             ; row 2
+    add r8, [rsp + 160]
+    mov [rsp + 208], r8             ; row 3
+
+    ; Calculate row pointers for C (int32)
+    mov rax, rsi
+    imul rax, [rsp + 176]
+    mov r8, [rbp + 56]              ; C
+    add r8, rax
+    mov [rsp + 216], r8             ; row 0
+    add r8, [rsp + 176]
+    mov [rsp + 224], r8             ; row 1
+    add r8, [rsp + 176]
+    mov [rsp + 232], r8             ; row 2
+    add r8, [rsp + 176]
+    mov [rsp + 240], r8             ; row 3
+
+    xor edi, edi                    ; j = 0
+
+.i8_col_16:
+    lea eax, [edi + 16]
+    cmp eax, dword [rbp + 24]       ; j + 16 <= N?
+    jg .i8_col_8
+
+    vpxor ymm0, ymm0, ymm0
+    vpxor ymm1, ymm1, ymm1
+    vpxor ymm2, ymm2, ymm2
+    vpxor ymm3, ymm3, ymm3
+    vpxor ymm4, ymm4, ymm4
+    vpxor ymm5, ymm5, ymm5
+    vpxor ymm6, ymm6, ymm6
+    vpxor ymm7, ymm7, ymm7
+
+    mov r11, [rbp + 48]             ; B
+    movsxd rax, edi
+    add r11, rax                    ; B + j
+    mov r12, [rsp + 168]            ; stride_B
+
+    xor ebx, ebx                    ; k = 0
+
+.i8_k_16:
+    vpmovsxbd ymm8, qword [r11]
+    vpmovsxbd ymm9, qword [r11 + 8]
+
+    ; Row 0
+    mov r13, [rsp + 184]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm0, ymm0, ymm11
+    vpmulld ymm12, ymm9, ymm10
+    vpaddd ymm1, ymm1, ymm12
+
+    ; Row 1
+    mov r13, [rsp + 192]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm2, ymm2, ymm11
+    vpmulld ymm12, ymm9, ymm10
+    vpaddd ymm3, ymm3, ymm12
+
+    ; Row 2
+    mov r13, [rsp + 200]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm4, ymm4, ymm11
+    vpmulld ymm12, ymm9, ymm10
+    vpaddd ymm5, ymm5, ymm12
+
+    ; Row 3
+    mov r13, [rsp + 208]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm6, ymm6, ymm11
+    vpmulld ymm12, ymm9, ymm10
+    vpaddd ymm7, ymm7, ymm12
+
+    add r11, r12
+    inc ebx
+    cmp ebx, r10d
+    jl .i8_k_16
+
+    movsxd rax, edi
+    shl rax, 2                      ; j * 4 bytes
+
+    mov r13, [rsp + 216]
+    vmovdqu [r13 + rax],      ymm0
+    vmovdqu [r13 + rax + 32], ymm1
+
+    mov r13, [rsp + 224]
+    vmovdqu [r13 + rax],      ymm2
+    vmovdqu [r13 + rax + 32], ymm3
+
+    mov r13, [rsp + 232]
+    vmovdqu [r13 + rax],      ymm4
+    vmovdqu [r13 + rax + 32], ymm5
+
+    mov r13, [rsp + 240]
+    vmovdqu [r13 + rax],      ymm6
+    vmovdqu [r13 + rax + 32], ymm7
+
+    add edi, 16
+    jmp .i8_col_16
+
+.i8_col_8:
+    lea eax, [edi + 8]
+    cmp eax, dword [rbp + 24]       ; j + 8 <= N?
+    jg .i8_col_tail
+
+    vpxor ymm0, ymm0, ymm0
+    vpxor ymm2, ymm2, ymm2
+    vpxor ymm4, ymm4, ymm4
+    vpxor ymm6, ymm6, ymm6
+
+    mov r11, [rbp + 48]             ; B
+    movsxd rax, edi
+    add r11, rax
+    mov r12, [rsp + 168]
+
+    xor ebx, ebx
+
+.i8_k_8:
+    vpmovsxbd ymm8, qword [r11]
+
+    ; Row 0
+    mov r13, [rsp + 184]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm0, ymm0, ymm11
+
+    ; Row 1
+    mov r13, [rsp + 192]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm2, ymm2, ymm11
+
+    ; Row 2
+    mov r13, [rsp + 200]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm4, ymm4, ymm11
+
+    ; Row 3
+    mov r13, [rsp + 208]
+    movsx eax, byte [r13 + rbx]
+    vmovd xmm10, eax
+    vpbroadcastd ymm10, xmm10
+    vpmulld ymm11, ymm8, ymm10
+    vpaddd ymm6, ymm6, ymm11
+
+    add r11, r12
+    inc ebx
+    cmp ebx, r10d
+    jl .i8_k_8
+
+    movsxd rax, edi
+    shl rax, 2
+
+    mov r13, [rsp + 216]
+    vmovdqu [r13 + rax], ymm0
+    mov r13, [rsp + 224]
+    vmovdqu [r13 + rax], ymm2
+    mov r13, [rsp + 232]
+    vmovdqu [r13 + rax], ymm4
+    mov r13, [rsp + 240]
+    vmovdqu [r13 + rax], ymm6
+
+    add edi, 8
+    jmp .i8_col_8
+
+.i8_col_tail:
+    cmp edi, dword [rbp + 24]       ; j < N?
+    jge .i8_row_next_4
+
+.i8_col_tail_loop:
+    xor r12d, r12d
+    xor r13d, r13d
+    xor r14d, r14d
+    xor r15d, r15d
+
+    xor ebx, ebx
+
+.i8_col_tail_k:
+    mov rax, rbx
+    imul rax, [rsp + 168]
+    movsxd rcx, edi
+    add rax, rcx
+    mov r11, [rbp + 48]
+    movsx ecx, byte [r11 + rax]
+
+    mov r8, [rsp + 184]
+    movsx eax, byte [r8 + rbx]
+    imul eax, ecx
+    add r12d, eax
+
+    mov r8, [rsp + 192]
+    movsx eax, byte [r8 + rbx]
+    imul eax, ecx
+    add r13d, eax
+
+    mov r8, [rsp + 200]
+    movsx eax, byte [r8 + rbx]
+    imul eax, ecx
+    add r14d, eax
+
+    mov r8, [rsp + 208]
+    movsx eax, byte [r8 + rbx]
+    imul eax, ecx
+    add r15d, eax
+
+    inc ebx
+    cmp ebx, r10d
+    jl .i8_col_tail_k
+
+    movsxd rax, edi
+    shl rax, 2
+
+    mov r8, [rsp + 216]
+    mov dword [r8 + rax], r12d
+    mov r8, [rsp + 224]
+    mov dword [r8 + rax], r13d
+    mov r8, [rsp + 232]
+    mov dword [r8 + rax], r14d
+    mov r8, [rsp + 240]
+    mov dword [r8 + rax], r15d
+
+    inc edi
+    cmp edi, dword [rbp + 24]
+    jl .i8_col_tail_loop
+
+.i8_row_next_4:
+    add esi, 4
+    jmp .i8_row_4
+
+.i8_row_tail:
+    cmp esi, dword [rbp + 16]
+    jge .i8_done
+
+.i8_single_row:
+    mov rax, rsi
+    imul rax, [rsp + 160]
+    mov r8, [rbp + 40]
+    add r8, rax
+
+    mov rax, rsi
+    imul rax, [rsp + 176]
+    mov r9, [rbp + 56]
+    add r9, rax
+
+    xor edi, edi
+
+.i8_single_j:
+    cmp edi, dword [rbp + 24]
+    jge .i8_single_row_next
+
+    xor r12d, r12d
+    xor ebx, ebx
+
+.i8_single_k:
+    movsx eax, byte [r8 + rbx]
+    mov rcx, rbx
+    imul rcx, [rsp + 168]
+    movsxd rdx, edi
+    add rcx, rdx
+    mov r11, [rbp + 48]
+    movsx edx, byte [r11 + rcx]
+    imul eax, edx
+    add r12d, eax
+
+    inc ebx
+    cmp ebx, r10d
+    jl .i8_single_k
+
+    movsxd rax, edi
+    shl rax, 2
+    mov dword [r9 + rax], r12d
+
+    inc edi
+    jmp .i8_single_j
+
+.i8_single_row_next:
+    inc esi
+    cmp esi, dword [rbp + 16]
+    jl .i8_single_row
+
+.i8_done:
+    vzeroupper
+    movups xmm6,  [rsp + 0]
+    movups xmm7,  [rsp + 16]
+    movups xmm8,  [rsp + 32]
+    movups xmm9,  [rsp + 48]
+    movups xmm10, [rsp + 64]
+    movups xmm11, [rsp + 80]
+    movups xmm12, [rsp + 96]
+    movups xmm13, [rsp + 112]
+    movups xmm14, [rsp + 128]
+    movups xmm15, [rsp + 144]
+    add rsp, 280
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    pop rbp
+    ret

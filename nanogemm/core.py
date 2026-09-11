@@ -75,6 +75,21 @@ if _fasm_path:
 
         _fasm_lib.nanogemm_simd_isa.argtypes = []
         _fasm_lib.nanogemm_simd_isa.restype = ctypes.c_char_p
+
+        if hasattr(_fasm_lib, "nanogemm_bmm"):
+            _fasm_lib.nanogemm_bmm.argtypes = [
+                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+                ctypes.c_int64, ctypes.c_int64, ctypes.c_int64,
+            ]
+            _fasm_lib.nanogemm_bmm.restype = None
+
+        if hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
+            _fasm_lib.nanogemm_gemm_i8i8i32.argtypes = [
+                ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+            ]
+            _fasm_lib.nanogemm_gemm_i8i8i32.restype = None
     except Exception:
         _fasm_lib = None
 
@@ -385,6 +400,7 @@ def bmm(
     a: np.ndarray,
     b: np.ndarray,
     out: Optional[np.ndarray] = None,
+    backend: Optional[str] = None,
 ) -> np.ndarray:
     """
     Batched Matrix Multiplication (BMM) for 3D and 4D tensors with hardware acceleration.
@@ -455,14 +471,46 @@ def bmm(
         if not out_buf.flags.c_contiguous:
             out_buf = np.ascontiguousarray(out_buf)
 
-    if _HAS_C_EXT and hasattr(_ext, "bmm_fast"):
+    chosen_backend = backend.lower().strip() if backend else _ACTIVE_BACKEND
+
+    if chosen_backend == "fasm" and _fasm_lib and hasattr(_fasm_lib, "nanogemm_bmm"):
+        batch_count = out_shape_3d[0]
+        M = a.shape[-2] if a.ndim >= 2 else 1
+        K = a.shape[-1]
+        N = b.shape[-1]
+        stride_a = M * K if a.ndim == 3 else 0
+        stride_b = K * N if b.ndim == 3 else 0
+        stride_c = M * N
+        _fasm_lib.nanogemm_bmm(
+            batch_count, M, N, K,
+            a.ctypes.data, b.ctypes.data, out_buf.ctypes.data,
+            stride_a, stride_b, stride_c
+        )
+        if is_4d:
+            return out_buf.reshape(out_shape_4d)
+        return out_buf
+
+    if _HAS_C_EXT and hasattr(_ext, "bmm_fast") and chosen_backend != "fasm":
         _ext.bmm_fast(a, b, out_buf)
+    elif _fasm_lib and hasattr(_fasm_lib, "nanogemm_bmm"):
+        batch_count = out_shape_3d[0]
+        M = a.shape[-2] if a.ndim >= 2 else 1
+        K = a.shape[-1]
+        N = b.shape[-1]
+        stride_a = M * K if a.ndim == 3 else 0
+        stride_b = K * N if b.ndim == 3 else 0
+        stride_c = M * N
+        _fasm_lib.nanogemm_bmm(
+            batch_count, M, N, K,
+            a.ctypes.data, b.ctypes.data, out_buf.ctypes.data,
+            stride_a, stride_b, stride_c
+        )
     else:
         batch_count = out_shape_3d[0]
         for i in range(batch_count):
             a_slice = a[i] if a.ndim == 3 else a
             b_slice = b[i] if b.ndim == 3 else b
-            out_buf[i] = matmul(a_slice, b_slice)
+            out_buf[i] = matmul(a_slice, b_slice, backend=chosen_backend)
 
     if is_4d:
         return out_buf.reshape(out_shape_4d)
@@ -473,6 +521,7 @@ def matmul_int8(
     a: np.ndarray,
     b: np.ndarray,
     out: Optional[np.ndarray] = None,
+    backend: Optional[str] = None,
 ) -> np.ndarray:
     """
     Multiply two 2D matrices of signed 8-bit integers (int8) with hardware SIMD acceleration.
@@ -486,6 +535,8 @@ def matmul_int8(
         Matrix of shape (K, N) and dtype int8.
     out : np.ndarray, optional
         Pre-allocated output buffer of shape (M, N) and dtype int32.
+    backend : str, optional
+        Override execution backend ('fasm', 'c', or 'auto').
 
     Returns
     -------
@@ -511,8 +562,18 @@ def matmul_int8(
         if out.shape != (M, N) or out.dtype != np.int32 or not out.flags.c_contiguous:
             raise ValueError(f"out must be contiguous int32 array of shape ({M}, {N})")
 
-    if _HAS_C_EXT and hasattr(_ext, "matmul_int8_fast"):
+    chosen_backend = backend.lower().strip() if backend else _ACTIVE_BACKEND
+
+    if chosen_backend == "fasm" and _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
+        _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
+        return out
+
+    if _HAS_C_EXT and hasattr(_ext, "matmul_int8_fast") and chosen_backend != "fasm":
         _ext.matmul_int8_fast(a, b, out)
+        return out
+
+    if _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
+        _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
         return out
 
     # Fallback
