@@ -1,6 +1,8 @@
 #ifndef NANOGEMM_KERNEL_H
 #define NANOGEMM_KERNEL_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +35,21 @@ NANOGEMM_API void nanogemm_matmul(
     const float* A,
     const float* B,
     float* C
+);
+
+NANOGEMM_API void nanogemm_bmm(
+    int batch_count,
+    int M, int N, int K,
+    const float* A, int stride_a,
+    const float* B, int stride_b,
+    float* C, int stride_c
+);
+
+NANOGEMM_API void nanogemm_gemm_i8i8i32(
+    int M, int N, int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc
 );
 
 NANOGEMM_API const char* nanogemm_simd_isa(void);

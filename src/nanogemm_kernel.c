@@ -660,3 +660,257 @@ NANOGEMM_API const char* nanogemm_simd_isa(void)
     return "Generic Scalar";
 #endif
 }
+
+/* -------------------------------------------------------------
+ * Batched SGEMM (BMM)
+ * ------------------------------------------------------------- */
+NANOGEMM_API void nanogemm_bmm(
+    int batch_count,
+    int M, int N, int K,
+    const float* A, int stride_a,
+    const float* B, int stride_b,
+    float* C, int stride_c)
+{
+    if (batch_count <= 0 || M <= 0 || N <= 0 || K <= 0) return;
+
+    for (int b = 0; b < batch_count; ++b) {
+        const float* cur_a = A + (stride_a ? (size_t)b * stride_a : 0);
+        const float* cur_b = B + (stride_b ? (size_t)b * stride_b : 0);
+        float* cur_c = C + (size_t)b * stride_c;
+        nanogemm_matmul(M, N, K, cur_a, cur_b, cur_c);
+    }
+}
+
+/* -------------------------------------------------------------
+ * INT8 Matrix Multiplication (A: int8_t, B: int8_t -> C: int32_t)
+ * ------------------------------------------------------------- */
+static inline void sgemm_i8_edge(
+    int m_count, int n_count, int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc)
+{
+    for (int i = 0; i < m_count; ++i) {
+        for (int j = 0; j < n_count; ++j) {
+            int32_t sum = 0;
+            for (int k = 0; k < K; ++k) {
+                sum += (int32_t)A[i * lda + k] * (int32_t)B[k * ldb + j];
+            }
+            C[i * ldc + j] = sum;
+        }
+    }
+}
+
+#if defined(NANOGEMM_X86_AVX2)
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_4x16_i8_avx2(
+    int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc)
+{
+    __m256i c00 = _mm256_setzero_si256();
+    __m256i c01 = _mm256_setzero_si256();
+    __m256i c10 = _mm256_setzero_si256();
+    __m256i c11 = _mm256_setzero_si256();
+    __m256i c20 = _mm256_setzero_si256();
+    __m256i c21 = _mm256_setzero_si256();
+    __m256i c30 = _mm256_setzero_si256();
+    __m256i c31 = _mm256_setzero_si256();
+
+    int k = 0;
+    for (; k <= K - 2; k += 2) {
+        __m128i b_raw0_0 = _mm_loadl_epi64((const __m128i*)&B[(k + 0) * ldb]);
+        __m128i b_raw1_0 = _mm_loadl_epi64((const __m128i*)&B[(k + 0) * ldb + 8]);
+        __m128i b_raw0_1 = _mm_loadl_epi64((const __m128i*)&B[(k + 1) * ldb]);
+        __m128i b_raw1_1 = _mm_loadl_epi64((const __m128i*)&B[(k + 1) * ldb + 8]);
+
+        __m256i b0_0 = _mm256_cvtepi8_epi32(b_raw0_0);
+        __m256i b1_0 = _mm256_cvtepi8_epi32(b_raw1_0);
+        __m256i b0_1 = _mm256_cvtepi8_epi32(b_raw0_1);
+        __m256i b1_1 = _mm256_cvtepi8_epi32(b_raw1_1);
+
+        __m256i a0_0 = _mm256_set1_epi32((int32_t)A[0 * lda + k + 0]);
+        __m256i a0_1 = _mm256_set1_epi32((int32_t)A[0 * lda + k + 1]);
+        c00 = _mm256_add_epi32(c00, _mm256_add_epi32(_mm256_mullo_epi32(a0_0, b0_0), _mm256_mullo_epi32(a0_1, b0_1)));
+        c01 = _mm256_add_epi32(c01, _mm256_add_epi32(_mm256_mullo_epi32(a0_0, b1_0), _mm256_mullo_epi32(a0_1, b1_1)));
+
+        __m256i a1_0 = _mm256_set1_epi32((int32_t)A[1 * lda + k + 0]);
+        __m256i a1_1 = _mm256_set1_epi32((int32_t)A[1 * lda + k + 1]);
+        c10 = _mm256_add_epi32(c10, _mm256_add_epi32(_mm256_mullo_epi32(a1_0, b0_0), _mm256_mullo_epi32(a1_1, b0_1)));
+        c11 = _mm256_add_epi32(c11, _mm256_add_epi32(_mm256_mullo_epi32(a1_0, b1_0), _mm256_mullo_epi32(a1_1, b1_1)));
+
+        __m256i a2_0 = _mm256_set1_epi32((int32_t)A[2 * lda + k + 0]);
+        __m256i a2_1 = _mm256_set1_epi32((int32_t)A[2 * lda + k + 1]);
+        c20 = _mm256_add_epi32(c20, _mm256_add_epi32(_mm256_mullo_epi32(a2_0, b0_0), _mm256_mullo_epi32(a2_1, b0_1)));
+        c21 = _mm256_add_epi32(c21, _mm256_add_epi32(_mm256_mullo_epi32(a2_0, b1_0), _mm256_mullo_epi32(a2_1, b1_1)));
+
+        __m256i a3_0 = _mm256_set1_epi32((int32_t)A[3 * lda + k + 0]);
+        __m256i a3_1 = _mm256_set1_epi32((int32_t)A[3 * lda + k + 1]);
+        c30 = _mm256_add_epi32(c30, _mm256_add_epi32(_mm256_mullo_epi32(a3_0, b0_0), _mm256_mullo_epi32(a3_1, b0_1)));
+        c31 = _mm256_add_epi32(c31, _mm256_add_epi32(_mm256_mullo_epi32(a3_0, b1_0), _mm256_mullo_epi32(a3_1, b1_1)));
+    }
+
+    for (; k < K; ++k) {
+        __m128i b_raw0 = _mm_loadl_epi64((const __m128i*)&B[k * ldb]);
+        __m128i b_raw1 = _mm_loadl_epi64((const __m128i*)&B[k * ldb + 8]);
+
+        __m256i b0 = _mm256_cvtepi8_epi32(b_raw0);
+        __m256i b1 = _mm256_cvtepi8_epi32(b_raw1);
+
+        __m256i a0 = _mm256_set1_epi32((int32_t)A[0 * lda + k]);
+        c00 = _mm256_add_epi32(c00, _mm256_mullo_epi32(a0, b0));
+        c01 = _mm256_add_epi32(c01, _mm256_mullo_epi32(a0, b1));
+
+        __m256i a1 = _mm256_set1_epi32((int32_t)A[1 * lda + k]);
+        c10 = _mm256_add_epi32(c10, _mm256_mullo_epi32(a1, b0));
+        c11 = _mm256_add_epi32(c11, _mm256_mullo_epi32(a1, b1));
+
+        __m256i a2 = _mm256_set1_epi32((int32_t)A[2 * lda + k]);
+        c20 = _mm256_add_epi32(c20, _mm256_mullo_epi32(a2, b0));
+        c21 = _mm256_add_epi32(c21, _mm256_mullo_epi32(a2, b1));
+
+        __m256i a3 = _mm256_set1_epi32((int32_t)A[3 * lda + k]);
+        c30 = _mm256_add_epi32(c30, _mm256_mullo_epi32(a3, b0));
+        c31 = _mm256_add_epi32(c31, _mm256_mullo_epi32(a3, b1));
+    }
+
+    _mm256_storeu_si256((__m256i*)&C[0 * ldc + 0], c00);
+    _mm256_storeu_si256((__m256i*)&C[0 * ldc + 8], c01);
+    _mm256_storeu_si256((__m256i*)&C[1 * ldc + 0], c10);
+    _mm256_storeu_si256((__m256i*)&C[1 * ldc + 8], c11);
+    _mm256_storeu_si256((__m256i*)&C[2 * ldc + 0], c20);
+    _mm256_storeu_si256((__m256i*)&C[2 * ldc + 8], c21);
+    _mm256_storeu_si256((__m256i*)&C[3 * ldc + 0], c30);
+    _mm256_storeu_si256((__m256i*)&C[3 * ldc + 8], c31);
+}
+
+NANOGEMM_AVX2_TARGET
+static inline void sgemm_microkernel_4x8_i8_avx2(
+    int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc)
+{
+    __m256i c0 = _mm256_setzero_si256();
+    __m256i c1 = _mm256_setzero_si256();
+    __m256i c2 = _mm256_setzero_si256();
+    __m256i c3 = _mm256_setzero_si256();
+
+    for (int k = 0; k < K; ++k) {
+        __m128i b_raw = _mm_loadl_epi64((const __m128i*)&B[k * ldb]);
+        __m256i b = _mm256_cvtepi8_epi32(b_raw);
+
+        __m256i a0 = _mm256_set1_epi32((int32_t)A[0 * lda + k]);
+        c0 = _mm256_add_epi32(c0, _mm256_mullo_epi32(a0, b));
+
+        __m256i a1 = _mm256_set1_epi32((int32_t)A[1 * lda + k]);
+        c1 = _mm256_add_epi32(c1, _mm256_mullo_epi32(a1, b));
+
+        __m256i a2 = _mm256_set1_epi32((int32_t)A[2 * lda + k]);
+        c2 = _mm256_add_epi32(c2, _mm256_mullo_epi32(a2, b));
+
+        __m256i a3 = _mm256_set1_epi32((int32_t)A[3 * lda + k]);
+        c3 = _mm256_add_epi32(c3, _mm256_mullo_epi32(a3, b));
+    }
+
+    _mm256_storeu_si256((__m256i*)&C[0 * ldc], c0);
+    _mm256_storeu_si256((__m256i*)&C[1 * ldc], c1);
+    _mm256_storeu_si256((__m256i*)&C[2 * ldc], c2);
+    _mm256_storeu_si256((__m256i*)&C[3 * ldc], c3);
+}
+#endif
+
+#if defined(NANOGEMM_ARM_NEON)
+static inline void sgemm_microkernel_4x8_i8_neon(
+    int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc)
+{
+    int32x4_t c00 = vdupq_n_s32(0);
+    int32x4_t c01 = vdupq_n_s32(0);
+    int32x4_t c10 = vdupq_n_s32(0);
+    int32x4_t c11 = vdupq_n_s32(0);
+    int32x4_t c20 = vdupq_n_s32(0);
+    int32x4_t c21 = vdupq_n_s32(0);
+    int32x4_t c30 = vdupq_n_s32(0);
+    int32x4_t c31 = vdupq_n_s32(0);
+
+    for (int k = 0; k < K; ++k) {
+        int8x8_t b8 = vld1_s8(&B[k * ldb]);
+        int16x8_t b16 = vmovl_s8(b8);
+        int32x4_t b_lo = vmovl_s16(vget_low_s16(b16));
+        int32x4_t b_hi = vmovl_s16(vget_high_s16(b16));
+
+        int32_t a0 = A[0 * lda + k];
+        c00 = vmlaq_n_s32(c00, b_lo, a0);
+        c01 = vmlaq_n_s32(c01, b_hi, a0);
+
+        int32_t a1 = A[1 * lda + k];
+        c10 = vmlaq_n_s32(c10, b_lo, a1);
+        c11 = vmlaq_n_s32(c11, b_hi, a1);
+
+        int32_t a2 = A[2 * lda + k];
+        c20 = vmlaq_n_s32(c20, b_lo, a2);
+        c21 = vmlaq_n_s32(c21, b_hi, a2);
+
+        int32_t a3 = A[3 * lda + k];
+        c30 = vmlaq_n_s32(c30, b_lo, a3);
+        c31 = vmlaq_n_s32(c31, b_hi, a3);
+    }
+
+    vst1q_s32(&C[0 * ldc + 0], c00);
+    vst1q_s32(&C[0 * ldc + 4], c01);
+    vst1q_s32(&C[1 * ldc + 0], c10);
+    vst1q_s32(&C[1 * ldc + 4], c11);
+    vst1q_s32(&C[2 * ldc + 0], c20);
+    vst1q_s32(&C[2 * ldc + 4], c21);
+    vst1q_s32(&C[3 * ldc + 0], c30);
+    vst1q_s32(&C[3 * ldc + 4], c31);
+}
+#endif
+
+NANOGEMM_API void nanogemm_gemm_i8i8i32(
+    int M, int N, int K,
+    const int8_t* A, int lda,
+    const int8_t* B, int ldb,
+    int32_t* C, int ldc)
+{
+    if (M <= 0 || N <= 0 || K <= 0) return;
+
+#if defined(NANOGEMM_X86_AVX2)
+    int i = 0;
+    for (; i <= M - 4; i += 4) {
+        int j = 0;
+        for (; j <= N - 16; j += 16) {
+            sgemm_microkernel_4x16_i8_avx2(K, &A[i * lda], lda, &B[j], ldb, &C[i * ldc + j], ldc);
+        }
+        for (; j <= N - 8; j += 8) {
+            sgemm_microkernel_4x8_i8_avx2(K, &A[i * lda], lda, &B[j], ldb, &C[i * ldc + j], ldc);
+        }
+        if (j < N) {
+            sgemm_i8_edge(4, N - j, K, &A[i * lda], lda, &B[j], ldb, &C[i * ldc + j], ldc);
+        }
+    }
+    if (i < M) {
+        sgemm_i8_edge(M - i, N, K, &A[i * lda], lda, &B[0], ldb, &C[i * ldc], ldc);
+    }
+#elif defined(NANOGEMM_ARM_NEON)
+    int i = 0;
+    for (; i <= M - 4; i += 4) {
+        int j = 0;
+        for (; j <= N - 8; j += 8) {
+            sgemm_microkernel_4x8_i8_neon(K, &A[i * lda], lda, &B[j], ldb, &C[i * ldc + j], ldc);
+        }
+        if (j < N) {
+            sgemm_i8_edge(4, N - j, K, &A[i * lda], lda, &B[j], ldb, &C[i * ldc + j], ldc);
+        }
+    }
+    if (i < M) {
+        sgemm_i8_edge(M - i, N, K, &A[i * lda], lda, &B[0], ldb, &C[i * ldc], ldc);
+    }
+#else
+    sgemm_i8_edge(M, N, K, A, lda, B, ldb, C, ldc);
+#endif
+}

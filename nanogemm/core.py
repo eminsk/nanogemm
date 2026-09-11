@@ -219,6 +219,9 @@ def matmul(
     np.ndarray
         Result of matrix multiplication (M, N) with float32 dtype.
     """
+    if a.ndim > 2 or b.ndim > 2:
+        return bmm(a, b, out=out)
+
     if backend is None and _HAS_C_EXT:
         try:
             if out is not None:
@@ -376,3 +379,191 @@ def sgemm(
     else:
         c[:] = alpha * res + beta * c
     return c
+
+
+def bmm(
+    a: np.ndarray,
+    b: np.ndarray,
+    out: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """
+    Batched Matrix Multiplication (BMM) for 3D and 4D tensors with hardware acceleration.
+
+    Supports:
+    - 3D x 3D: (B, M, K) @ (B, K, N) -> (B, M, N)
+    - 2D x 3D: (M, K) @ (B, K, N) -> (B, M, N) (broadcasting A across batch)
+    - 3D x 2D: (B, M, K) @ (K, N) -> (B, M, N) (broadcasting B across batch)
+    - 4D x 4D: (B, H, M, K) @ (B, H, K, N) -> (B, H, M, N) (e.g. Transformer Multi-Head Attention)
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Input tensor (2D, 3D, or 4D).
+    b : np.ndarray
+        Input tensor (2D, 3D, or 4D).
+    out : np.ndarray, optional
+        Pre-allocated output buffer matching the output shape and dtype float32.
+
+    Returns
+    -------
+    np.ndarray
+        Result of batched matrix multiplication.
+    """
+    orig_shape_a = a.shape
+    orig_shape_b = b.shape
+
+    # Handle 4D Multi-Head Attention tensors: (B, H, M, K) -> flatten to 3D (B*H, M, K)
+    is_4d = False
+    out_shape_4d = None
+    if a.ndim == 4 and b.ndim == 4:
+        if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+            raise ValueError(f"Leading batch/head dimensions mismatch: {orig_shape_a} vs {orig_shape_b}")
+        B_dim, H_dim, M, K = a.shape
+        _, _, K_b, N = b.shape
+        if K != K_b:
+            raise ValueError(f"Inner dimension mismatch: {K} vs {K_b}")
+        a = a.reshape(B_dim * H_dim, M, K)
+        b = b.reshape(B_dim * H_dim, K, N)
+        out_shape_4d = (B_dim, H_dim, M, N)
+        is_4d = True
+
+    if not a.flags.c_contiguous or a.dtype != np.float32:
+        a = np.ascontiguousarray(a, dtype=np.float32)
+    if not b.flags.c_contiguous or b.dtype != np.float32:
+        b = np.ascontiguousarray(b, dtype=np.float32)
+
+    # Compute expected 3D output shape
+    if a.ndim == 3 and b.ndim == 3:
+        if a.shape[0] != b.shape[0]:
+            raise ValueError(f"Batch dimension mismatch: {a.shape[0]} vs {b.shape[0]}")
+        out_shape_3d = (a.shape[0], a.shape[1], b.shape[2])
+    elif a.ndim == 2 and b.ndim == 3:
+        out_shape_3d = (b.shape[0], a.shape[0], b.shape[2])
+    elif a.ndim == 3 and b.ndim == 2:
+        out_shape_3d = (a.shape[0], a.shape[1], b.shape[1])
+    else:
+        raise ValueError(f"Unsupported tensor shapes for bmm: {orig_shape_a} and {orig_shape_b}")
+
+    target_shape = out_shape_4d if is_4d else out_shape_3d
+
+    if out is None:
+        out_buf = np.empty(out_shape_3d, dtype=np.float32)
+    else:
+        if out.shape != target_shape or out.dtype != np.float32:
+            raise ValueError(f"out must be float32 array with shape {target_shape}")
+        out_buf = out.reshape(out_shape_3d) if is_4d else out
+        if not out_buf.flags.c_contiguous:
+            out_buf = np.ascontiguousarray(out_buf)
+
+    if _HAS_C_EXT and hasattr(_ext, "bmm_fast"):
+        _ext.bmm_fast(a, b, out_buf)
+    else:
+        batch_count = out_shape_3d[0]
+        for i in range(batch_count):
+            a_slice = a[i] if a.ndim == 3 else a
+            b_slice = b[i] if b.ndim == 3 else b
+            out_buf[i] = matmul(a_slice, b_slice)
+
+    if is_4d:
+        return out_buf.reshape(out_shape_4d)
+    return out_buf
+
+
+def matmul_int8(
+    a: np.ndarray,
+    b: np.ndarray,
+    out: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """
+    Multiply two 2D matrices of signed 8-bit integers (int8) with hardware SIMD acceleration.
+    Accumulates in 32-bit signed integers (int32) to prevent numeric overflow.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Matrix of shape (M, K) and dtype int8.
+    b : np.ndarray
+        Matrix of shape (K, N) and dtype int8.
+    out : np.ndarray, optional
+        Pre-allocated output buffer of shape (M, N) and dtype int32.
+
+    Returns
+    -------
+    np.ndarray
+        Result of matrix multiplication with int32 dtype and shape (M, N).
+    """
+    if a.ndim != 2 or b.ndim != 2:
+        raise ValueError(f"Expected 2D arrays for matmul_int8, got a.ndim={a.ndim} and b.ndim={b.ndim}")
+
+    M, K = a.shape
+    K_b, N = b.shape
+    if K != K_b:
+        raise ValueError(f"Dimension mismatch in matmul_int8: ({M}, {K}) x ({K_b}, {N})")
+
+    if not a.flags.c_contiguous or a.dtype != np.int8:
+        a = np.ascontiguousarray(a, dtype=np.int8)
+    if not b.flags.c_contiguous or b.dtype != np.int8:
+        b = np.ascontiguousarray(b, dtype=np.int8)
+
+    if out is None:
+        out = np.empty((M, N), dtype=np.int32)
+    else:
+        if out.shape != (M, N) or out.dtype != np.int32 or not out.flags.c_contiguous:
+            raise ValueError(f"out must be contiguous int32 array of shape ({M}, {N})")
+
+    if _HAS_C_EXT and hasattr(_ext, "matmul_int8_fast"):
+        _ext.matmul_int8_fast(a, b, out)
+        return out
+
+    # Fallback
+    np.matmul(a.astype(np.int64), b.astype(np.int64), out=out)
+    return out
+
+
+def quantized_matmul(
+    a: np.ndarray,
+    b: np.ndarray,
+    scale_a: float = 1.0,
+    scale_b: float = 1.0,
+    bias: Optional[np.ndarray] = None,
+    out: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """
+    Quantized linear layer forward pass: Y = (A_int8 @ B_int8) * (scale_a * scale_b) + bias.
+    Computes integer GEMM with AVX2 SIMD and returns dequantized float32 output.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Quantized input activations (int8).
+    b : np.ndarray
+        Quantized weights (int8).
+    scale_a : float, default 1.0
+        Dequantization scale for matrix A.
+    scale_b : float, default 1.0
+        Dequantization scale for matrix B.
+    bias : np.ndarray, optional
+        Optional bias vector/matrix to add to the output.
+    out : np.ndarray, optional
+        Pre-allocated float32 output buffer.
+
+    Returns
+    -------
+    np.ndarray
+        Dequantized float32 output matrix.
+    """
+    int_accum = matmul_int8(a, b)
+    effective_scale = np.float32(scale_a * scale_b)
+
+    if out is None:
+        res = int_accum.astype(np.float32) * effective_scale
+    else:
+        if out.shape != int_accum.shape or out.dtype != np.float32:
+            raise ValueError(f"out must be float32 array with shape {int_accum.shape}")
+        np.multiply(int_accum, effective_scale, out=out, dtype=np.float32)
+        res = out
+
+    if bias is not None:
+        res += bias
+
+    return res

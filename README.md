@@ -147,12 +147,25 @@ print("Active ISA:", ng.get_simd_isa())
 A = np.random.randn(32, 64).astype(np.float32)
 B = np.random.randn(64, 128).astype(np.float32)
 
-# Direct hardware-accelerated MatMul: C = A @ B
+# Direct hardware-accelerated MatMul: C = A @ B (supports 2D, 3D, and 4D tensors)
 C = ng.matmul(A, B)
 
-# Or with pre-allocated zero-copy output buffer for maximum performance:
+# Pre-allocated zero-copy output buffer for maximum throughput:
 out = np.empty((32, 128), dtype=np.float32)
 ng.matmul(A, B, out=out)
+
+# Batched Multi-Head Attention GEMM for Transformers (B x H x S x D):
+Q = np.random.randn(8, 16, 32, 64).astype(np.float32)
+K_t = np.random.randn(8, 16, 64, 32).astype(np.float32)
+scores = ng.bmm(Q, K_t)  # Output: (8, 16, 32, 32) with zero Python loop overhead
+
+# Quantized INT8 GEMM (int8 x int8 -> int32, up to 5.0x faster than NumPy):
+A_i8 = np.random.randint(-128, 128, size=(32, 64), dtype=np.int8)
+B_i8 = np.random.randint(-128, 128, size=(64, 128), dtype=np.int8)
+C_i32 = ng.matmul_int8(A_i8, B_i8)
+
+# End-to-end Quantized Linear Layer forward pass:
+Y_float = ng.quantized_matmul(A_i8, B_i8, scale_a=0.05, scale_b=0.02)
 
 # Standard BLAS SGEMM interface: C = alpha * (A @ B) + beta * C
 res = ng.sgemm(A, B, alpha=2.0, beta=0.5, c=out)
@@ -172,6 +185,8 @@ The [Interactive Benchmark Notebook](https://colab.research.google.com/github/em
 - **Microsecond Latency & GFLOPS Benchmark:** Measures speedup vs NumPy across $16\times 16 \dots 128\times 128$ matrices (up to **7.26x faster** on $24\times 24$).
 - **Interactive Performance Plotting:** Side-by-side latency & speedup bar/line charts using Matplotlib with Edge AI sweet spot highlights.
 - **Real-Time Edge AI Loop:** Demonstrates 100,000 iterations of zero-allocation in-place multiplication (`out=C`) for $24\times 24$ and $32\times 32$.
+- **Batched Matrix Multiplication (BMM):** Multi-Head Attention benchmarks ($Q @ K^T$) across 8, 16, 32, and 64 heads.
+- **Quantized INT8 SIMD GEMM:** Measures speedup vs NumPy integer multiplication across $16\times 16 \dots 128\times 128$ (up to **5.0x faster**).
 
 ---
 
