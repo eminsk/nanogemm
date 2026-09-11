@@ -3,8 +3,18 @@ Comprehensive Test Suite for NanoGEMM BMM and Quantized INT8 Extensions.
 Tests numerical correctness, broadcasting, 4D attention shapes, and bit-for-bit INT8 precision.
 """
 
+import sys
+from pathlib import Path
 import numpy as np
-import nanogemm as ng
+
+try:
+    import nanogemm as ng
+except ImportError:
+    for p in [Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent]:
+        if (p / "nanogemm" / "__init__.py").exists():
+            sys.path.insert(0, str(p))
+            break
+    import nanogemm as ng
 
 
 def test_bmm_3d_square():

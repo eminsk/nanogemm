@@ -33,10 +33,14 @@ jobs:
         python setup.py build_ext --inplace
 
     - name: Run Test Suite
+      env:
+        PYTHONPATH: .
       run: |
         python tests/test_correctness.py
         python tests/test_bmm_int8.py
 
     - name: Run Benchmarks
+      env:
+        PYTHONPATH: .
       run: |
         python benchmarks/bench_vs_numpy.py
