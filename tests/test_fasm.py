@@ -10,6 +10,12 @@ import subprocess
 import time
 from pathlib import Path
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="FASM PE binaries (.dll / .exe) are Windows-specific"
+)
 
 def _find_asm_dir() -> Path:
     candidates = [
