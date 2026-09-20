@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat)](https://anaconda.org/conda-forge/nanogemm)
 [![MSYS2](https://img.shields.io/badge/MSYS2-pacman-orange.svg?style=flat)](https://packages.msys2.org/package/mingw-w64-x86_64-python-nanogemm)
-[![Debian/Ubuntu](https://img.shields.io/badge/Debian%2FUbuntu-.deb%20package-E95420.svg?style=flat)](https://github.com/eminsk/nanogemm/releases)
+[![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![Arch Linux AUR](https://img.shields.io/badge/Arch_Linux-AUR-1793D1.svg?style=flat)](https://aur.archlinux.org/packages/python-nanogemm)
 [![The Daily Diff](https://img.shields.io/badge/The_Daily_Diff-Featured_Story_(9%2F10)-crimson?logo=hackernews)](https://tdd.cat/2026-09-07/)
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
@@ -26,6 +26,7 @@
 | **PyPI (Standard)** | `pip install nanogemm` |
 | **Conda-Forge** | `conda install -c conda-forge nanogemm` |
 | **MSYS2 (MinGW-w64)** | `pacman -S mingw-w64-x86_64-python-nanogemm` |
+| **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-nanogemm` |
 | **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.6-1_amd64.deb` |
 | **Arch Linux (AUR)** | `yay -S python-nanogemm` |
 
