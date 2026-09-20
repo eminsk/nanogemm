@@ -1,0 +1,33 @@
+# Maintainer: eminsk <M_N_N@tut.by>
+
+pkgname=python-nanogemm
+_name=nanogemm
+pkgver=0.3.6
+pkgrel=1
+pkgdesc="Minimalist, bare-metal SIMD & Assembly GEMM engine for Python"
+arch=('x86_64' 'aarch64')
+url="https://github.com/eminsk/nanogemm"
+license=('MIT')
+depends=(
+  'python'
+  'python-numpy'
+)
+makedepends=(
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-setuptools'
+)
+source=("https://files.pythonhosted.org/packages/source/${_name::1}/${_name}/${_name}-${pkgver}.tar.gz")
+sha256sums=('f0527251635a05ef822d1c3458ca01df34a93479a6211be87555acd71ab99f10')
+
+build() {
+  cd "${srcdir}/${_name}-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "${srcdir}/${_name}-${pkgver}"
+  python -m installer --destdir="${pkgdir}" dist/*.whl
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

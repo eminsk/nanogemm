@@ -1,0 +1,22 @@
+Source: python-nanogemm
+Section: python
+Priority: optional
+Maintainer: eminsk <M_N_N@tut.by>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               pybuild-plugin-pyproject,
+               python3-all-dev,
+               python3-setuptools,
+               python3-numpy
+Standards-Version: 4.6.2
+Homepage: https://github.com/eminsk/nanogemm
+
+Package: python3-nanogemm
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         ${python3:Depends},
+         python3-numpy
+Description: Minimalist bare-metal SIMD & Assembly GEMM engine for Python
+ Sub-microsecond CPU matrix multiplication microkernels for AI and
+ scientific computing.

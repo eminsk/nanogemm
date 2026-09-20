@@ -1,0 +1,18 @@
+pkgbase = python-nanogemm
+	pkgdesc = Minimalist, bare-metal SIMD & Assembly GEMM engine for Python
+	pkgver = 0.3.6
+	pkgrel = 1
+	url = https://github.com/eminsk/nanogemm
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-wheel
+	makedepends = python-setuptools
+	depends = python
+	depends = python-numpy
+	source = https://files.pythonhosted.org/packages/source/n/nanogemm/nanogemm-0.3.6.tar.gz
+	sha256sums = f0527251635a05ef822d1c3458ca01df34a93479a6211be87555acd71ab99f10
+
+pkgname = python-nanogemm

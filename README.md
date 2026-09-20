@@ -1,6 +1,10 @@
 # NanoGEMM ⚡
 
 [![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
+[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat)](https://anaconda.org/conda-forge/nanogemm)
+[![MSYS2](https://img.shields.io/badge/MSYS2-pacman-orange.svg?style=flat)](https://packages.msys2.org/package/mingw-w64-x86_64-python-nanogemm)
+[![Debian/Ubuntu](https://img.shields.io/badge/Debian%2FUbuntu-.deb%20package-E95420.svg?style=flat)](https://github.com/eminsk/nanogemm/releases)
+[![Arch Linux AUR](https://img.shields.io/badge/Arch_Linux-AUR-1793D1.svg?style=flat)](https://aur.archlinux.org/packages/python-nanogemm)
 [![The Daily Diff](https://img.shields.io/badge/The_Daily_Diff-Featured_Story_(9%2F10)-crimson?logo=hackernews)](https://tdd.cat/2026-09-07/)
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
@@ -14,6 +18,16 @@
 [![Dev.to](https://img.shields.io/badge/Dev.to-Read%20Article-0a0a0a?logo=devdotto)](https://dev.to/eminsk/how-i-beat-numpy-matrix-multiplication-by-28x-with-a-100kb-c-microkernel-82k)
 
 > 🏆 **Featured in [The Daily Diff](https://tdd.cat/2026-09-07/):** Selected as a top AI & HPC story (*Interest: 9/10, Depth: 9/10, Utility: 9/10*). Ranked in **GitHub Trending** under Deep Learning topics.
+
+### 📦 Multi-Platform Installation
+
+| Platform / Manager | Installation Command |
+|---|---|
+| **PyPI (Standard)** | `pip install nanogemm` |
+| **Conda-Forge** | `conda install -c conda-forge nanogemm` |
+| **MSYS2 (MinGW-w64)** | `pacman -S mingw-w64-x86_64-python-nanogemm` |
+| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.6-1_amd64.deb` |
+| **Arch Linux (AUR)** | `yay -S python-nanogemm` |
 
 **NanoGEMM** is a minimalist, bare-metal General Matrix Multiplication (GEMM) engine designed for sub-microsecond CPU inference and high-performance computing in Python.
 
