@@ -243,15 +243,27 @@ The [Interactive Benchmark Notebook](https://colab.research.google.com/github/em
 
 ## 🧪 Testing & Verification
 
-Run the comprehensive correctness test suite comparing NanoGEMM with NumPy reference outputs across random uniforms, normals, non-square dimensions, and prime shapes:
+Run the full pytest suite (covering IEEE-754 correctness, batched Transformer BMM, INT8 SIMD, and FASM assembly):
 
 ```bash
-python tests/test_correctness.py
+uv run --extra dev pytest -v
+# or with standard pytest
+pytest -v
 ```
 
-Run the official benchmark against your installed NumPy BLAS:
+Or run individual test scripts directly:
 
 ```bash
+# Correctness vs reference NumPy OpenBLAS:
+python tests/test_correctness.py
+
+# Batched BMM & INT8 SIMD GEMM verification:
+python tests/test_bmm_int8.py
+
+# Standalone FASM assembly DLL bridge verification:
+python tests/test_fasm.py
+
+# Official performance benchmark vs NumPy BLAS:
 python benchmarks/bench_vs_numpy.py
 ```
 
