@@ -21,10 +21,17 @@
 
 | Platform / Manager | Installation Command |
 |---|---|
-| **PyPI (Standard)** | `pip install nanogemm` |
+| **PyPI (pip)** | `pip install nanogemm` |
+| **PyPI (uv)** | `uv add nanogemm` |
 | **Conda-Forge** | `conda install -c conda-forge nanogemm` |
 | **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-nanogemm` |
 | **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.6-1_amd64.deb` |
+
+```bash
+pip install nanogemm
+# or with uv
+uv add nanogemm
+```
 
 **NanoGEMM** is a minimalist, bare-metal General Matrix Multiplication (GEMM) engine designed for sub-microsecond CPU inference and high-performance computing in Python.
 
