@@ -11,7 +11,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
+try:
+    import numpy as np
+except (ImportError, ModuleNotFoundError):
+    np = None
 
 # ---------------------------------------------------------------------------
 # Fast-Path: Native C-Extension Loader
