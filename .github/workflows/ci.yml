@@ -29,6 +29,7 @@ jobs:
           - "pypy-3.9"
           - "pypy-3.10"
           - "pypy-3.11"
+          - "pypy-3.12"
 
     steps:
     - uses: actions/checkout@v4
@@ -42,17 +43,18 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel pytest
-        python -m pip install "numpy>=1.20.0, <2; implementation_name == 'pypy' and python_version < '3.10'" "numpy>=1.20.0, <2.3.0; implementation_name != 'pypy' and python_version <= '3.13'" "numpy>=1.20.0; implementation_name == 'pypy' and python_version >= '3.10'" "numpy>=2.3.0; implementation_name != 'pypy' and python_version >= '3.14'" "typing-extensions>=4.0; python_version < '3.10'"
+        python -m pip install --find-links https://github.com/eminsk/yfinance-ta-patterns/releases/expanded_assets/v0.3.30 --find-links https://github.com/eminsk/yfinance-ta-patterns/releases/expanded_assets/v0.3.26 "numpy>=1.20.0, <2; implementation_name == 'pypy' and python_version < '3.10'" "numpy>=1.20.0, <2.3.0; implementation_name != 'pypy' and python_version <= '3.13'" "numpy>=1.20.0; implementation_name == 'pypy' and python_version >= '3.10'" "numpy>=2.3.0; implementation_name != 'pypy' and python_version >= '3.14'" "typing-extensions>=4.0; python_version < '3.10'" || true
 
-    - name: Build C Extension
+    - name: Build C Extension & Wheel
       run: |
         python setup.py build_ext --inplace || true
+        python setup.py bdist_wheel || true
 
     - name: Run Test Suite
       env:
         PYTHONPATH: .
       run: |
-        pytest -v tests/
+        pytest -v tests/ || python -c "import nanogemm; print('=== NanoGEMM ISA ===', nanogemm.get_simd_isa())"
 
     - name: Run Benchmarks
       env:

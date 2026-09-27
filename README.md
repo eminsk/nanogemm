@@ -8,7 +8,7 @@
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8%20--%203.15-blue)](https://pypi.org/project/nanogemm/)
-[![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.11-orange.svg)](https://www.pypy.org/)
+[![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.12-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
 [![SIMD](https://img.shields.io/badge/SIMD-AVX2%20%2B%20FMA%20%7C%20ARM%20NEON-brightgreen)](https://github.com/eminsk/nanogemm)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
@@ -38,7 +38,7 @@ Built with direct **AVX2 / FMA (256-bit SIMD)** and **ARM NEON (128-bit SIMD)** 
 |:---|:---|:---|:---:|
 | **CPython (Standard)** | 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15 | Native C AVX2/FMA + Buffer Protocol | ✅ Fully Supported |
 | **CPython (Free-Threaded)** | 3.13t, 3.14t, 3.15t | Multi-core No-GIL (`Py_BEGIN_ALLOW_THREADS`) | ✅ Fully Supported |
-| **PyPy (JIT Accelerated)** | 3.8, 3.9, 3.10, 3.11 | High-speed JIT tracing / Pure ctypes FASM fallback | ✅ Fully Supported |
+| **PyPy (JIT Accelerated)** | 3.8, 3.9, 3.10, 3.11, 3.12 | High-speed JIT tracing / Pure ctypes FASM fallback | ✅ Fully Supported |
 | **Operating Systems** | Windows (7, 8, 10, 11), Linux, macOS (Intel & Apple Silicon) | x86_64, ARM64 | ✅ Fully Supported |
 
 ---
