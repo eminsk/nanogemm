@@ -1,5 +1,5 @@
-python-nanogemm (0.3.6-1) unstable; urgency=medium
+python-nanogemm (0.3.8-1) unstable; urgency=medium
 
-  * Release version 0.3.6.
+  * Release version 0.3.8 with Python 3.16 support and pure-Python matmul fallback.
 
- -- eminsk <M_N_N@tut.by>  Sun, 20 Sep 2026 12:00:00 +0000
+ -- eminsk <M_N_N@tut.by>  Mon, 28 Sep 2026 18:55:00 +0000
