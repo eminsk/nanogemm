@@ -237,6 +237,35 @@ def matmul(
     np.ndarray
         Result of matrix multiplication (M, N) with float32 dtype.
     """
+    if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
+        if not isinstance(a, list) or not isinstance(b, list):
+            raise TypeError("Expected numpy arrays or 2D nested lists")
+        M = len(a)
+        K = len(a[0]) if M > 0 else 0
+        K_b = len(b)
+        N = len(b[0]) if K_b > 0 else 0
+        if K != K_b:
+            raise ValueError(f"Incompatible matrix dimensions: cannot multiply ({M}, {K}) by ({K_b}, {N})")
+        a_flat = [float(x) for row in a for x in row]
+        b_flat = [float(x) for row in b for x in row]
+        if _fasm_lib is not None:
+            c_a = (ctypes.c_float * len(a_flat))(*a_flat)
+            c_b = (ctypes.c_float * len(b_flat))(*b_flat)
+            c_c = (ctypes.c_float * (M * N))()
+            _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
+            res = []
+            for i in range(M):
+                res.append([c_c[i * N + j] for j in range(N)])
+            return res
+        else:
+            res = []
+            for i in range(M):
+                row = []
+                for j in range(N):
+                    row.append(sum(a[i][k] * b[k][j] for k in range(K)))
+                res.append(row)
+            return res
+
     if a.ndim > 2 or b.ndim > 2:
         return bmm(a, b, out=out)
 
