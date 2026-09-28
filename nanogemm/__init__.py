@@ -13,7 +13,7 @@ from nanogemm.core import (
     get_backend,
 )
 
-__version__ = "0.3.7"
+__version__ = "0.3.8"
 __all__ = [
     "matmul",
     "sgemm",
