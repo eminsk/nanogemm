@@ -2,6 +2,8 @@
 NanoGEMM: Minimalist, bare-metal SIMD & Assembly Matrix Multiplication Engine.
 """
 
+__version__ = "0.3.8"
+
 from nanogemm.core import (
     matmul,
     sgemm,
@@ -12,8 +14,8 @@ from nanogemm.core import (
     set_backend,
     get_backend,
 )
+from nanogemm.mcp_server import NanoGEMMMCPServer
 
-__version__ = "0.3.8"
 __all__ = [
     "matmul",
     "sgemm",
@@ -23,5 +25,6 @@ __all__ = [
     "get_simd_isa",
     "set_backend",
     "get_backend",
+    "NanoGEMMMCPServer",
     "__version__",
 ]

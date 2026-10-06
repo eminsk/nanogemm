@@ -7,6 +7,7 @@
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![MCP Server](https://img.shields.io/badge/MCP-Server%20Ready-blueviolet?logo=modelcontextprotocol)](https://github.com/eminsk/nanogemm)
 [![Python](https://img.shields.io/badge/Python-3.8%20--%203.16-blue)](https://pypi.org/project/nanogemm/)
 [![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.12-orange.svg)](https://www.pypy.org/)
 [![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
@@ -224,6 +225,56 @@ res = ng.sgemm(A, B, alpha=2.0, beta=0.5, c=out)
 
 ---
 
+## 🤖 Native Model Context Protocol (MCP) Server
+
+NanoGEMM includes a native, zero-dependency **Model Context Protocol (MCP)** server (`nanogemm-mcp`), allowing AI agents (Claude Desktop, Cursor, Antigravity, OpenManus) to query host SIMD instruction sets, execute ultra-low latency GEMM arithmetic, and run live CPU microbenchmarks.
+
+### 🛠 Available MCP Tools
+
+| Tool | Parameters | Description |
+|:---|:---|:---|
+| `gemm_benchmark` | `m, k, n, iterations, dtype` | Microbenchmark NanoGEMM vs NumPy on host CPU with exact GFLOPS & speedup factor |
+| `gemm_multiply` | `matrix_a, matrix_b, dtype` | Execute direct SIMD matrix multiplication on nested numeric arrays (FP32/INT8) |
+| `gemm_hardware_info` | *(none)* | Detect CPU architecture, SIMD extensions (AVX2, FMA, NEON, SSE2), and active kernel |
+
+### 🚀 Running the Server
+
+Run directly via the CLI:
+```bash
+# Direct command
+nanogemm mcp
+
+# Or via dedicated script
+nanogemm-mcp
+```
+
+### ⚙️ Client Integration Configurations
+
+#### Cursor (`.cursor/mcp.json`)
+```json
+{
+  "mcpServers": {
+    "nanogemm": {
+      "command": "nanogemm-mcp"
+    }
+  }
+}
+```
+
+#### Claude Desktop (`claude_desktop_config.json`)
+```json
+{
+  "mcpServers": {
+    "nanogemm": {
+      "command": "python",
+      "args": ["-m", "nanogemm.mcp_server"]
+    }
+  }
+}
+```
+
+---
+
 ## 🚀 Interactive Google Colab Demo
 
 Run NanoGEMM benchmarks interactively in your browser with zero local setup:
@@ -298,9 +349,9 @@ python tests/test_fasm.py
 
 NanoGEMM is developed by [**@eminsk**](https://github.com/eminsk) as part of an engineering ecosystem focused on low-level hardware performance, assembly programming, and AI agent infrastructure:
 
-* 🧠 [**AgentJIT**](https://github.com/eminsk/agentjit) — Just-In-Time Compiler for AI Agent Trajectories with speculative de-optimization guards (`pip install agentjit`).
+* 🧠 [**AgentJIT**](https://github.com/eminsk/agentjit) — Just-In-Time Compiler for AI Agent Trajectories with speculative de-optimization guards and Native MCP Server (`pip install agentjit`).
 * ⚡ [**NanoVector**](https://github.com/eminsk/nanovector) — Bare-metal C99/AVX2 vector search & episodic memory engine (~120KB) with Native MCP Server (`pip install nanovector`).
-* 🖥️ [**NanoRecall**](https://github.com/eminsk/nanorecall) — 100% Private, offline desktop memory & semantic screen search engine powered by NanoVector (`pip install nanorecall`).
+* 🖥️ [**NanoRecall**](https://github.com/eminsk/nanorecall) — 100% Private, offline desktop memory & semantic screen search engine with Native MCP Server (`pip install nanorecall`).
 * 🛒 [**avito-sdk**](https://github.com/eminsk/avito-sdk) — Headless Avito scraping & data extraction SDK with price drop tracking, Playwright cookies, Telegram/VK bots, and Native MCP Server (`pip install avito-sdk`).
 * 📊 [**xlsx_vievers**](https://github.com/eminsk/xlsx_vievers) — Headless Excel formula engine (129+ functions), desktop spreadsheet viewer, SIMD SSE2 math, and Native MCP Server (`pip install xlsx-viewer-pro`).
 * 📈 [**yfinance-ta-patterns**](https://github.com/eminsk/yfinance-ta-patterns) — Candlestick & chart pattern scanner with AI Confluence Scoring, Backtesting, and Native MCP Server (`pip install yfinance-ta-patterns`).
