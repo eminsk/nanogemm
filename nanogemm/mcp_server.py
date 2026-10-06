@@ -179,18 +179,21 @@ class NanoGEMMMCPServer:
                 args = params.get("arguments") or {}
                 with contextlib.redirect_stdout(sys.stderr):
                     tool_output = self._call_tool(tool_name, args)
+                call_result: dict[str, Any] = {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(tool_output, ensure_ascii=False, indent=2),
+                        }
+                    ],
+                    "isError": False,
+                }
+                if isinstance(tool_output, dict):
+                    call_result["structuredContent"] = tool_output
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(tool_output, ensure_ascii=False, indent=2),
-                            }
-                        ],
-                        "isError": False,
-                    },
+                    "result": call_result,
                 }
 
             return {
