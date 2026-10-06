@@ -296,13 +296,15 @@ python tests/test_fasm.py
 
 ## 🌐 High-Performance Systems Ecosystem
 
-NanoGEMM is developed by [**@eminsk**](https://github.com/eminsk) as part of an engineering ecosystem focused on low-level hardware performance, assembly programming, and native desktop computing:
+NanoGEMM is developed by [**@eminsk**](https://github.com/eminsk) as part of an engineering ecosystem focused on low-level hardware performance, assembly programming, and AI agent infrastructure:
 
-* ⚡ [**NanoVector**](https://github.com/eminsk/nanovector) — Minimalist, bare-metal vector search & episodic memory engine for AI agents in ~120KB with AVX2+FMA, ARM NEON, and FASM x64 (`pip install nanovector`).
+* 🧠 [**AgentJIT**](https://github.com/eminsk/agentjit) — Just-In-Time Compiler for AI Agent Trajectories with speculative de-optimization guards (`pip install agentjit`).
+* ⚡ [**NanoVector**](https://github.com/eminsk/nanovector) — Bare-metal C99/AVX2 vector search & episodic memory engine (~120KB) with Native MCP Server (`pip install nanovector`).
+* 🖥️ [**NanoRecall**](https://github.com/eminsk/nanorecall) — 100% Private, offline desktop memory & semantic screen search engine powered by NanoVector (`pip install nanorecall`).
+* 🛒 [**avito-sdk**](https://github.com/eminsk/avito-sdk) — Headless Avito scraping & data extraction SDK with price drop tracking, Playwright cookies, Telegram/VK bots, and Native MCP Server (`pip install avito-sdk`).
+* 📊 [**xlsx_vievers**](https://github.com/eminsk/xlsx_vievers) — Headless Excel formula engine (129+ functions), desktop spreadsheet viewer, SIMD SSE2 math, and Native MCP Server (`pip install xlsx-viewer-pro`).
+* 📈 [**yfinance-ta-patterns**](https://github.com/eminsk/yfinance-ta-patterns) — Candlestick & chart pattern scanner with AI Confluence Scoring, Backtesting, and Native MCP Server (`pip install yfinance-ta-patterns`).
 * 🎥 [**screenvideo**](https://github.com/eminsk/screenvideo) — Lightweight desktop screen recorder featuring WASAPI loopback audio and a standalone pure x64 Flat Assembler (FASM) native edition.
-* 📊 [**xlsx_vievers**](https://github.com/eminsk/xlsx_vievers) — Desktop spreadsheet processor with 80+ formula functions, Chart Wizard, and hardware-accelerated SIMD SSE2 math engine.
-* 📈 [**yfinance-ta-patterns**](https://github.com/eminsk/yfinance-ta-patterns) — Candlestick pattern scanner and AI ranking suite powered by TA-Lib and quantitative backtesting.
-* 🔍 [**StackOverflowAPI**](https://github.com/eminsk/StackOverflowAPI) — Desktop client for Stack Overflow built with CustomTkinter and native FASM x64 search client.
 
 ---
 
