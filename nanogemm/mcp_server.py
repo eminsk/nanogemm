@@ -18,7 +18,11 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 
-import numpy as np
+try:
+    import numpy as np
+except (ImportError, ModuleNotFoundError):
+    np = None
+
 import nanogemm
 from nanogemm import __version__
 
@@ -213,6 +217,8 @@ class NanoGEMMMCPServer:
 
     def _call_tool(self, name: str, args: Dict[str, Any]) -> Any:
         if name == "gemm_benchmark":
+            if np is None:
+                raise RuntimeError("NumPy is required for gemm_benchmark.")
             m = max(16, min(1024, int(args.get("m", 128))))
             k = max(16, min(1024, int(args.get("k", 128))))
             n = max(16, min(1024, int(args.get("n", 128))))
@@ -255,6 +261,8 @@ class NanoGEMMMCPServer:
             }
 
         if name == "gemm_multiply":
+            if np is None:
+                raise RuntimeError("NumPy is required for gemm_multiply.")
             raw_a = args.get("matrix_a")
             raw_b = args.get("matrix_b")
             if raw_a is None or raw_b is None:

@@ -72,6 +72,7 @@ def test_mcp_tools_list_schema():
 
 
 def test_mcp_gemm_benchmark():
+    pytest.importorskip("numpy")
     server = NanoGEMMMCPServer()
     req = {
         "jsonrpc": "2.0",
@@ -100,6 +101,7 @@ def test_mcp_gemm_benchmark():
 
 
 def test_mcp_gemm_multiply():
+    pytest.importorskip("numpy")
     server = NanoGEMMMCPServer()
     req = {
         "jsonrpc": "2.0",

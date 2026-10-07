@@ -5,7 +5,8 @@ Tests numerical correctness, broadcasting, 4D attention shapes, and bit-for-bit 
 
 import sys
 from pathlib import Path
-import numpy as np
+import pytest
+np = pytest.importorskip("numpy")
 
 try:
     import nanogemm as ng

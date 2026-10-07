@@ -3,8 +3,9 @@ Correctness tests for NanoGEMM matrix multiplication engine.
 Works with both pytest and python direct execution.
 """
 
-import numpy as np
 import sys
+import pytest
+np = pytest.importorskip("numpy")
 from pathlib import Path
 
 try:
