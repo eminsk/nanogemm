@@ -15,6 +15,10 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
 [![Dev.to](https://img.shields.io/badge/Dev.to-Read%20Article-0a0a0a?logo=devdotto)](https://dev.to/eminsk/how-i-beat-numpy-matrix-multiplication-by-28x-with-a-100kb-c-microkernel-82k)
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT-26A17B?logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
+
+> ⭐ **Enjoying NanoGEMM?** Give it a star on GitHub to support development!  
+> ☕ **Want to support the author?** USDT (TRC-20): `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
 
 > 🏆 **Featured in [The Daily Diff](https://tdd.cat/2026-09-07/):** Selected as a top AI & HPC story (*Interest: 9/10, Depth: 9/10, Utility: 9/10*). Ranked in **GitHub Trending** under Deep Learning topics.
 
@@ -356,6 +360,18 @@ NanoGEMM is developed by [**@eminsk**](https://github.com/eminsk) as part of an 
 * 📊 [**xlsx_vievers**](https://github.com/eminsk/xlsx_vievers) — Headless Excel formula engine (129+ functions), desktop spreadsheet viewer, SIMD SSE2 math, and Native MCP Server (`pip install xlsx-viewer-pro`).
 * 📈 [**yfinance-ta-patterns**](https://github.com/eminsk/yfinance-ta-patterns) — Candlestick & chart pattern scanner with AI Confluence Scoring, Backtesting, and Native MCP Server (`pip install yfinance-ta-patterns`).
 * 🎥 [**screenvideo**](https://github.com/eminsk/screenvideo) — Lightweight desktop screen recorder featuring WASAPI loopback audio and a standalone pure x64 Flat Assembler (FASM) native edition.
+
+---
+
+## ☕ Support & Donations
+
+If you find this project valuable and would like to support ongoing development, low-level microkernel optimizations, and benchmarks, contributions are deeply appreciated!
+
+* **USDT (TRC-20)**:  
+  `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P`  
+  *(Network: TRON / TRC-20 | [Verify on TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))*
+
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT_(TRC20)-26A17B?style=for-the-badge&logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
 
 ---
 
