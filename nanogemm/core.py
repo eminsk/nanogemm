@@ -657,6 +657,9 @@ def quantized_matmul(
         res = out
 
     if bias is not None:
-        res += bias
+        if out is None:
+            res = res + bias
+        else:
+            np.add(res, bias, out=out)
 
     return res
