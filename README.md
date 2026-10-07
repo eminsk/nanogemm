@@ -1,7 +1,7 @@
 # NanoGEMM ⚡
 
 [![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
-[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat)](https://anaconda.org/conda-forge/nanogemm)
+[![Conda](https://img.shields.io/conda/vn/m_n_nik/nanogemm.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/nanogemm)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![The Daily Diff](https://img.shields.io/badge/The_Daily_Diff-Featured_Story_(9%2F10)-crimson?logo=hackernews)](https://tdd.cat/2026-09-07/)
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
@@ -10,7 +10,7 @@
 [![MCP Server](https://img.shields.io/badge/MCP-Server%20Ready-blueviolet?logo=modelcontextprotocol)](https://github.com/eminsk/nanogemm)
 [![Python](https://img.shields.io/badge/Python-3.8%20--%203.16-blue)](https://pypi.org/project/nanogemm/)
 [![PyPy](https://img.shields.io/badge/PyPy-3.8%20--%203.12-orange.svg)](https://www.pypy.org/)
-[![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.15t-purple.svg)](https://peps.python.org/pep-0703/)
+[![No-GIL](https://img.shields.io/badge/No--GIL-3.13t%20--%203.16t-purple.svg)](https://peps.python.org/pep-0703/)
 [![SIMD](https://img.shields.io/badge/SIMD-AVX2%20%2B%20FMA%20%7C%20ARM%20NEON-brightgreen)](https://github.com/eminsk/nanogemm)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
@@ -28,7 +28,7 @@
 |---|---|
 | **PyPI (pip)** | `pip install nanogemm` |
 | **PyPI (uv)** | `uv add nanogemm` |
-| **Conda-Forge** | `conda install -c conda-forge nanogemm` |
+| **Conda (Anaconda.org)** | `conda install -c m_n_nik nanogemm` |
 | **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-nanogemm` |
 | **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.8-1_amd64.deb` |
 
