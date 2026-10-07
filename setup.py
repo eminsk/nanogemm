@@ -32,13 +32,17 @@ class BuildExt(build_ext):
         super().build_extensions()
 
 
-ext_modules = [
-    Extension(
-        "nanogemm._ext",
-        sources=["src/nanogemm_pyext.c", "src/nanogemm_kernel.c"],
-        include_dirs=["src"],
-    )
-]
+if os.environ.get("NANOGEMM_PURE_PYTHON") == "1" or os.environ.get("CONDA_BUILD") == "1" or "RATTLER_BUILD" in os.environ or "BUILD_PREFIX" in os.environ:
+    ext_modules = []
+else:
+    ext_modules = [
+        Extension(
+            "nanogemm._ext",
+            sources=["src/nanogemm_pyext.c", "src/nanogemm_kernel.c"],
+            include_dirs=["src"],
+        )
+    ]
+
 
 setup(
     name="nanogemm",

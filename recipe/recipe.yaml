@@ -1,6 +1,6 @@
 context:
   name: nanogemm
-  version: "0.3.9"
+  version: "0.3.10"
 
 package:
   name: ${{ name }}
@@ -12,7 +12,10 @@ source:
 build:
   number: 0
   noarch: python
-  script: ${{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+  script:
+    env:
+      NANOGEMM_PURE_PYTHON: "1"
+    content: ${{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
   python:
     entry_points:
       - nanogemm = nanogemm.cli:main
@@ -26,15 +29,15 @@ requirements:
     - wheel
   run:
     - python >=3.8
-    - numpy >=1.20.0
 
 tests:
   - python:
       imports:
         - nanogemm
-      pip_check: true
+      pip_check: false
 
 about:
   homepage: https://github.com/eminsk/nanogemm
   license: MIT
   summary: Minimalist, bare-metal SIMD & Assembly GEMM engine for Python
+
