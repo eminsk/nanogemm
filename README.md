@@ -1,11 +1,14 @@
 # NanoGEMM ⚡
 
 [![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
-[![Conda](https://img.shields.io/conda/vn/m_n_nik/nanogemm.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/nanogemm)
+[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat&logo=condaforge)](https://anaconda.org/conda-forge/nanogemm)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![The Daily Diff](https://img.shields.io/badge/The_Daily_Diff-Featured_Story_(9%2F10)-crimson?logo=hackernews)](https://tdd.cat/2026-09-07/)
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
 [![CI](https://github.com/eminsk/nanogemm/actions/workflows/ci.yml/badge.svg)](https://github.com/eminsk/nanogemm/actions)
+[![GitHub Stars](https://img.shields.io/github/stars/eminsk/nanogemm?style=flat&logo=github)](https://github.com/eminsk/nanogemm/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/eminsk/nanogemm?style=flat&color=red&logo=github)](https://github.com/eminsk/nanogemm/issues)
+[![GitHub Discussions](https://img.shields.io/badge/Discussions-Join_Community-blue?style=flat&logo=github)](https://github.com/eminsk/nanogemm/discussions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Server](https://img.shields.io/badge/MCP-Server%20Ready-blueviolet?logo=modelcontextprotocol)](https://github.com/eminsk/nanogemm)
 [![Python](https://img.shields.io/badge/Python-3.8%20--%203.16-blue)](https://pypi.org/project/nanogemm/)
@@ -15,10 +18,13 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eminsk/nanogemm/blob/main/notebooks/benchmark.ipynb)
 [![Footprint](https://img.shields.io/badge/Binary-~100_KB-orange)](https://github.com/eminsk/nanogemm)
 [![Dev.to](https://img.shields.io/badge/Dev.to-Read%20Article-0a0a0a?logo=devdotto)](https://dev.to/eminsk/how-i-beat-numpy-matrix-multiplication-by-28x-with-a-100kb-c-microkernel-82k)
-[![Donate USDT](https://img.shields.io/badge/Donate-USDT-26A17B?logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
+[![Donate USDT](https://img.shields.io/badge/Donate-USDT_(TRC20)-26A17B?style=flat&logo=tether&logoColor=white)](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P)
 
-> ⭐ **Enjoying NanoGEMM?** Give it a star on GitHub to support development!  
-> ☕ **Want to support the author?** USDT (TRC-20): `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
+> ### 🤝 Community, Issues & Support
+> - 🐛 **Found a bug, numeric issue, or SIMD edge case?** Please [Open an Issue](https://github.com/eminsk/nanogemm/issues) — reports are tracked and resolved quickly!
+> - 💬 **Questions, performance ideas, or new kernels?** Join our [GitHub Discussions](https://github.com/eminsk/nanogemm/discussions).
+> - ⭐ **Find NanoGEMM useful?** Give it a star on GitHub — it helps more engineers and researchers discover it!
+> - ☕ **Support development (USDT TRC-20):** `TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P` ([Verify on TronScan](https://tronscan.org/#/address/TDVbEdnpgNgoAhNcn1EwXxWHiR3RKLit5P))
 
 > 🏆 **Featured in [The Daily Diff](https://tdd.cat/2026-09-07/):** Selected as a top AI & HPC story (*Interest: 9/10, Depth: 9/10, Utility: 9/10*). Ranked in **GitHub Trending** under Deep Learning topics.
 
