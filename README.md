@@ -1,6 +1,6 @@
 # NanoGEMM ⚡
 
-[![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
+[![PyPI](https://img.shields.io/pypi/v/nanogemm.svg?style=flat&logo=pypi&logoColor=white)](https://pypi.org/project/nanogemm/)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat&logo=condaforge)](https://anaconda.org/conda-forge/nanogemm)
 [![Anaconda Cloud](https://img.shields.io/conda/vn/m_n_nik/nanogemm.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/nanogemm)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
