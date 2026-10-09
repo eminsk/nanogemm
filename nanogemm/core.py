@@ -6,10 +6,11 @@ Zero-overhead CPU microkernels for AI and scientific computing in Python.
 from __future__ import annotations
 
 import ctypes
+import ctypes.util
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Tuple, List, Union
 
 try:
     import numpy as np
@@ -32,16 +33,59 @@ except ImportError:
         _HAS_C_EXT = False
 
 # ---------------------------------------------------------------------------
-# Pure Flat Assembler (FASM) Native DLL Loader
+# Cross-Platform Native Library Loader & Symbol Binder
+# Supports: Windows (FASM PE64 DLL), Linux (ELF64 SO), macOS (Mach-O dylib/NEON), Conda
 # ---------------------------------------------------------------------------
+
+def _bind_gemm_symbols(lib: ctypes.CDLL) -> ctypes.CDLL:
+    """Bind CTypes signatures for hardware-accelerated GEMM microkernels."""
+    if hasattr(lib, "nanogemm_matmul"):
+        lib.nanogemm_matmul.argtypes = [
+            ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        lib.nanogemm_matmul.restype = None
+
+    if hasattr(lib, "nanogemm_sgemm"):
+        lib.nanogemm_sgemm.argtypes = [
+            ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_float,
+            ctypes.c_void_p, ctypes.c_int,
+            ctypes.c_void_p, ctypes.c_int,
+            ctypes.c_float,
+            ctypes.c_void_p, ctypes.c_int,
+        ]
+        lib.nanogemm_sgemm.restype = None
+
+    if hasattr(lib, "nanogemm_simd_isa"):
+        lib.nanogemm_simd_isa.argtypes = []
+        lib.nanogemm_simd_isa.restype = ctypes.c_char_p
+
+    if hasattr(lib, "nanogemm_bmm"):
+        lib.nanogemm_bmm.argtypes = [
+            ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+            ctypes.c_int64, ctypes.c_int64, ctypes.c_int64,
+        ]
+        lib.nanogemm_bmm.restype = None
+
+    if hasattr(lib, "nanogemm_gemm_i8i8i32"):
+        lib.nanogemm_gemm_i8i8i32.argtypes = [
+            ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        lib.nanogemm_gemm_i8i8i32.restype = None
+
+    return lib
+
 
 def _find_fasm_library() -> Optional[str]:
     pkg_dir = Path(__file__).resolve().parent
     root_dir = pkg_dir.parent
+    is_64bit = sys.maxsize > 2**32
     
     candidates = []
     if sys.platform.startswith("win"):
-        is_64bit = sys.maxsize > 2**32
         dll_name = "nanogemm64.dll" if is_64bit else "nanogemm32.dll"
         candidates = [
             root_dir / "asm" / dll_name,
@@ -49,6 +93,17 @@ def _find_fasm_library() -> Optional[str]:
             pkg_dir / dll_name,
             root_dir / "build" / dll_name,
             root_dir / dll_name,
+        ]
+    elif sys.platform.startswith("linux"):
+        so_name = "nanogemm64.so" if is_64bit else "nanogemm32.so"
+        candidates = [
+            root_dir / "asm" / so_name,
+            pkg_dir / "asm" / so_name,
+            pkg_dir / so_name,
+            root_dir / "build" / so_name,
+            root_dir / so_name,
+            Path("/usr/local/lib") / so_name,
+            Path("/usr/lib") / so_name,
         ]
     for p in candidates:
         if p.is_file():
@@ -59,109 +114,79 @@ _fasm_path = _find_fasm_library()
 _fasm_lib = None
 if _fasm_path:
     try:
-        _fasm_lib = ctypes.CDLL(_fasm_path)
-        _fasm_lib.nanogemm_matmul.argtypes = [
-            ctypes.c_int, ctypes.c_int, ctypes.c_int,
-            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-        ]
-        _fasm_lib.nanogemm_matmul.restype = None
-
-        _fasm_lib.nanogemm_sgemm.argtypes = [
-            ctypes.c_int, ctypes.c_int, ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_void_p, ctypes.c_int,
-            ctypes.c_void_p, ctypes.c_int,
-            ctypes.c_float,
-            ctypes.c_void_p, ctypes.c_int,
-        ]
-        _fasm_lib.nanogemm_sgemm.restype = None
-
-        _fasm_lib.nanogemm_simd_isa.argtypes = []
-        _fasm_lib.nanogemm_simd_isa.restype = ctypes.c_char_p
-
-        if hasattr(_fasm_lib, "nanogemm_bmm"):
-            _fasm_lib.nanogemm_bmm.argtypes = [
-                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-                ctypes.c_int64, ctypes.c_int64, ctypes.c_int64,
-            ]
-            _fasm_lib.nanogemm_bmm.restype = None
-
-        if hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
-            _fasm_lib.nanogemm_gemm_i8i8i32.argtypes = [
-                ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-            ]
-            _fasm_lib.nanogemm_gemm_i8i8i32.restype = None
+        _fasm_lib = _bind_gemm_symbols(ctypes.CDLL(_fasm_path))
     except Exception:
         _fasm_lib = None
 
-# ---------------------------------------------------------------------------
-# Fallback: General Dynamic Library (ctypes) Loader
-# ---------------------------------------------------------------------------
 
 def _find_library() -> Optional[str]:
     pkg_dir = Path(__file__).resolve().parent
     root_dir = pkg_dir.parent
     
-    candidates = []
+    names = []
     if sys.platform.startswith("win"):
-        dll_name = "nanogemm.dll"
-        candidates = [
-            pkg_dir / dll_name,
-            root_dir / "build" / dll_name,
-            root_dir / dll_name,
-        ]
+        names = ["nanogemm.dll", "nanogemm64.dll", "libnanogemm.dll"]
     elif sys.platform == "darwin":
-        dylib_name = "libnanogemm.dylib"
-        candidates = [
-            pkg_dir / dylib_name,
-            root_dir / "build" / dylib_name,
-            root_dir / dylib_name,
-        ]
+        names = ["libnanogemm.dylib", "nanogemm.dylib"]
     else:
-        so_name = "libnanogemm.so"
-        candidates = [
-            pkg_dir / so_name,
-            root_dir / "build" / so_name,
-            root_dir / so_name,
-        ]
+        names = ["libnanogemm.so", "nanogemm.so", "nanogemm64.so"]
 
-    for p in candidates:
-        if p.is_file():
-            return str(p)
+    search_dirs = [
+        pkg_dir,
+        pkg_dir / "asm",
+        root_dir / "asm",
+        root_dir / "build",
+        root_dir,
+    ]
+
+    # Conda environment prefix support
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    if conda_prefix:
+        cp = Path(conda_prefix)
+        search_dirs.extend([
+            cp / "lib",
+            cp / "Library" / "bin",
+            cp / "DLLs",
+        ])
+
+    # Virtualenv and standard Python prefix paths
+    search_dirs.extend([
+        Path(sys.prefix) / "lib",
+        Path(sys.prefix) / "Library" / "bin",
+        Path(sys.prefix) / "DLLs",
+        Path(sys.prefix) / "bin",
+    ])
+
+    for d in search_dirs:
+        for name in names:
+            p = d / name
+            if p.is_file():
+                return str(p)
+
+    # Dynamic library resolution via ctypes.util
+    for name in ("nanogemm", "nanogemm64", "libnanogemm"):
+        found = ctypes.util.find_library(name)
+        if found:
+            return found
+
     return None
 
 _lib_path = _find_library()
-_lib = ctypes.CDLL(_lib_path) if _lib_path else None
+_lib = None
+if _lib_path:
+    try:
+        _lib = _bind_gemm_symbols(ctypes.CDLL(_lib_path))
+    except Exception:
+        _lib = None
 
-if _lib:
-    _lib.nanogemm_sgemm.argtypes = [
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
-        ctypes.c_float,
-        ctypes.c_void_p, ctypes.c_int,
-        ctypes.c_void_p, ctypes.c_int,
-        ctypes.c_float,
-        ctypes.c_void_p, ctypes.c_int,
-    ]
-    _lib.nanogemm_sgemm.restype = None
-
-    _lib.nanogemm_matmul.argtypes = [
-        ctypes.c_int, ctypes.c_int, ctypes.c_int,
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-    ]
-    _lib.nanogemm_matmul.restype = None
-
-    _lib.nanogemm_simd_isa.argtypes = []
-    _lib.nanogemm_simd_isa.restype = ctypes.c_char_p
+# Unified native acceleration engine (FASM / C-Shared / Conda)
+_native_lib = _fasm_lib or _lib
 
 # ---------------------------------------------------------------------------
 # Backend Management
 # ---------------------------------------------------------------------------
 
-# Default backend: "auto" selects FASM for large matrices (up to 2x faster)
-# and C extension for small matrices (lower Python call overhead).
-_ACTIVE_BACKEND = "auto" if (_fasm_lib is not None or _HAS_C_EXT) else "auto"
+_ACTIVE_BACKEND = "auto" if (_native_lib is not None or _HAS_C_EXT) else "auto"
 
 def set_backend(backend: str) -> None:
     """
@@ -171,16 +196,16 @@ def set_backend(backend: str) -> None:
     ----------
     backend : str
         One of:
-        - 'fasm': Pure Flat Assembler x86/x64 microkernel (fastest on medium/large tensors)
-        - 'c': Compiled C extension with AVX2 intrinsics
+        - 'fasm' / 'native': Hardware-accelerated assembly/SIMD microkernel (AVX2/NEON)
+        - 'c': Compiled C extension with SIMD intrinsics
         - 'auto': Automatically select optimal backend based on tensor dimensions
     """
     global _ACTIVE_BACKEND
     b = backend.lower().strip()
-    if b not in ("fasm", "c", "auto"):
-        raise ValueError(f"Unknown backend '{backend}'. Choose from 'fasm', 'c', or 'auto'.")
-    if b == "fasm" and _fasm_lib is None:
-        raise RuntimeError("FASM native library not found. Compile it using asm/build.bat.")
+    if b not in ("fasm", "native", "c", "auto"):
+        raise ValueError(f"Unknown backend '{backend}'. Choose from 'fasm', 'native', 'c', or 'auto'.")
+    if b in ("fasm", "native") and _native_lib is None:
+        raise RuntimeError("Native SIMD microkernel library not found.")
     if b == "c" and not _HAS_C_EXT:
         raise RuntimeError("C extension is not available.")
     _ACTIVE_BACKEND = b
@@ -203,12 +228,9 @@ def get_simd_isa() -> str:
         return _ext.simd_isa()
     if _HAS_C_EXT:
         return _ext.simd_isa()
-    if _fasm_lib is not None:
-        raw = _fasm_lib.nanogemm_simd_isa()
-        return raw.decode("utf-8") if raw else "FASM SIMD"
-    if _lib:
-        raw = _lib.nanogemm_simd_isa()
-        return raw.decode("utf-8") if raw else "Unknown"
+    if _native_lib is not None and hasattr(_native_lib, "nanogemm_simd_isa"):
+        raw = _native_lib.nanogemm_simd_isa()
+        return raw.decode("utf-8") if raw else "Native SIMD"
     return "Not compiled"
 
 
@@ -232,8 +254,8 @@ def matmul(
         M, N, K = shape
         if out is None:
             out = (ctypes.c_float * (M * N))()
-        if _fasm_lib is not None:
-            _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
+        if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
+            _native_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
             return out
 
     if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
@@ -241,8 +263,8 @@ def matmul(
             M, N, K = shape
             if out is None:
                 out = (ctypes.c_float * (M * N))()
-            if _fasm_lib is not None:
-                _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
+            if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
+                _native_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
                 return out
 
         if not isinstance(a, list) or not isinstance(b, list):
@@ -255,11 +277,11 @@ def matmul(
             raise ValueError(f"Incompatible matrix dimensions: cannot multiply ({M}, {K}) by ({K_b}, {N})")
         a_flat = [float(x) for row in a for x in row]
         b_flat = [float(x) for row in b for x in row]
-        if _fasm_lib is not None:
+        if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
             c_a = (ctypes.c_float * len(a_flat))(*a_flat)
             c_b = (ctypes.c_float * len(b_flat))(*b_flat)
             c_c = (ctypes.c_float * (M * N))()
-            _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
+            _native_lib.nanogemm_matmul(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
             if out is not None and isinstance(out, ctypes.Array):
                 ctypes.memmove(ctypes.byref(out), ctypes.byref(c_c), M * N * 4)
                 return out
@@ -320,37 +342,33 @@ def matmul(
 
     if chosen_backend == "auto":
         # For small matrices (<= 32x32), C extension has lower Python call overhead;
-        # for medium/large matrices (>= 64x64), FASM assembly kernel is up to 2x faster.
+        # for medium/large matrices (>= 64x64), native assembly kernel is up to 2x faster.
         if M <= 32 and N <= 32 and _HAS_C_EXT:
             chosen_backend = "c"
-        elif _fasm_lib is not None:
-            chosen_backend = "fasm"
+        elif _native_lib is not None:
+            chosen_backend = "fasm" if _fasm_lib is not None else "native"
         elif _HAS_C_EXT:
             chosen_backend = "c"
         else:
             chosen_backend = "c"
 
-    if chosen_backend == "fasm" and _fasm_lib is not None:
-        _fasm_lib.nanogemm_matmul(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
+    if chosen_backend in ("fasm", "native") and _native_lib is not None:
+        _native_lib.nanogemm_matmul(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
         return out
 
     if chosen_backend == "c" and _HAS_C_EXT:
         _ext.matmul_fast(a, b, out)
         return out
 
-    if _fasm_lib is not None:
-        _fasm_lib.nanogemm_matmul(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
+    if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
+        _native_lib.nanogemm_matmul(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
         return out
 
     if _HAS_C_EXT:
         _ext.matmul_fast(a, b, out)
         return out
 
-    if _lib:
-        _lib.nanogemm_matmul(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
-        return out
-
-    raise RuntimeError("NanoGEMM binary not available. Please compile nanogemm native binary.")
+    raise RuntimeError("NanoGEMM native binary not available. Please compile nanogemm native binary.")
 
 
 def sgemm(
@@ -375,7 +393,7 @@ def sgemm(
             raise ValueError(f"Incompatible matrix dimensions: ({M}, {K}) vs ({K_b}, {N})")
         a_flat = [float(x) for row in a for x in row]
         b_flat = [float(x) for row in b for x in row]
-        if _fasm_lib is not None:
+        if _native_lib is not None and hasattr(_native_lib, "nanogemm_sgemm"):
             c_a = (ctypes.c_float * len(a_flat))(*a_flat)
             c_b = (ctypes.c_float * len(b_flat))(*b_flat)
             if c is not None and isinstance(c, list):
@@ -383,7 +401,7 @@ def sgemm(
                 c_c = (ctypes.c_float * len(c_flat))(*c_flat)
             else:
                 c_c = (ctypes.c_float * (M * N))()
-            _fasm_lib.nanogemm_sgemm(
+            _native_lib.nanogemm_sgemm(
                 M, N, K,
                 float(alpha),
                 ctypes.byref(c_a), K,
@@ -430,15 +448,15 @@ def sgemm(
     if chosen_backend == "auto":
         if M <= 32 and N <= 32 and _HAS_C_EXT and hasattr(_ext, "sgemm_fast"):
             chosen_backend = "c"
-        elif _fasm_lib is not None:
-            chosen_backend = "fasm"
+        elif _native_lib is not None:
+            chosen_backend = "fasm" if _fasm_lib is not None else "native"
         elif _HAS_C_EXT and hasattr(_ext, "sgemm_fast"):
             chosen_backend = "c"
         else:
             chosen_backend = "c"
 
-    if chosen_backend == "fasm" and _fasm_lib is not None:
-        _fasm_lib.nanogemm_sgemm(
+    if chosen_backend in ("fasm", "native") and _native_lib is not None:
+        _native_lib.nanogemm_sgemm(
             M, N, K,
             float(alpha),
             a.ctypes.data, K,
@@ -452,8 +470,8 @@ def sgemm(
         _ext.sgemm_fast(a, b, float(alpha), float(beta), c)
         return c
 
-    if _fasm_lib is not None:
-        _fasm_lib.nanogemm_sgemm(
+    if _native_lib is not None and hasattr(_native_lib, "nanogemm_sgemm"):
+        _native_lib.nanogemm_sgemm(
             M, N, K,
             float(alpha),
             a.ctypes.data, K,
@@ -465,10 +483,6 @@ def sgemm(
 
     if _HAS_C_EXT and hasattr(_ext, "sgemm_fast"):
         _ext.sgemm_fast(a, b, float(alpha), float(beta), c)
-        return c
-
-    if _lib:
-        _lib.nanogemm_sgemm(M, N, K, float(alpha), a.ctypes.data, K, b.ctypes.data, N, float(beta), c.ctypes.data, N)
         return c
 
     # Fallback to matmul
@@ -568,7 +582,7 @@ def bmm(
 
     chosen_backend = backend.lower().strip() if backend else _ACTIVE_BACKEND
 
-    if chosen_backend == "fasm" and _fasm_lib and hasattr(_fasm_lib, "nanogemm_bmm"):
+    if chosen_backend in ("fasm", "native") and _native_lib and hasattr(_native_lib, "nanogemm_bmm"):
         batch_count = out_shape_3d[0]
         M = a.shape[-2] if a.ndim >= 2 else 1
         K = a.shape[-1]
@@ -576,7 +590,7 @@ def bmm(
         stride_a = M * K if a.ndim == 3 else 0
         stride_b = K * N if b.ndim == 3 else 0
         stride_c = M * N
-        _fasm_lib.nanogemm_bmm(
+        _native_lib.nanogemm_bmm(
             batch_count, M, N, K,
             a.ctypes.data, b.ctypes.data, out_buf.ctypes.data,
             stride_a, stride_b, stride_c
@@ -585,9 +599,9 @@ def bmm(
             return out_buf.reshape(out_shape_4d)
         return out_buf
 
-    if _HAS_C_EXT and hasattr(_ext, "bmm_fast") and chosen_backend != "fasm":
+    if _HAS_C_EXT and hasattr(_ext, "bmm_fast") and chosen_backend not in ("fasm", "native"):
         _ext.bmm_fast(a, b, out_buf)
-    elif _fasm_lib and hasattr(_fasm_lib, "nanogemm_bmm"):
+    elif _native_lib and hasattr(_native_lib, "nanogemm_bmm"):
         batch_count = out_shape_3d[0]
         M = a.shape[-2] if a.ndim >= 2 else 1
         K = a.shape[-1]
@@ -595,7 +609,7 @@ def bmm(
         stride_a = M * K if a.ndim == 3 else 0
         stride_b = K * N if b.ndim == 3 else 0
         stride_c = M * N
-        _fasm_lib.nanogemm_bmm(
+        _native_lib.nanogemm_bmm(
             batch_count, M, N, K,
             a.ctypes.data, b.ctypes.data, out_buf.ctypes.data,
             stride_a, stride_b, stride_c
@@ -649,11 +663,11 @@ def matmul_int8(
             raise ValueError(f"Incompatible matrix dimensions: ({M}, {K}) vs ({K_b}, {N})")
         a_flat = [int(x) for row in a for x in row]
         b_flat = [int(x) for row in b for x in row]
-        if _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
+        if _native_lib and hasattr(_native_lib, "nanogemm_gemm_i8i8i32"):
             c_a = (ctypes.c_int8 * len(a_flat))(*a_flat)
             c_b = (ctypes.c_int8 * len(b_flat))(*b_flat)
             c_c = (ctypes.c_int32 * (M * N))()
-            _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
+            _native_lib.nanogemm_gemm_i8i8i32(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
             res = []
             for i in range(M):
                 res.append([c_c[i * N + j] for j in range(N)])
@@ -688,16 +702,16 @@ def matmul_int8(
 
     chosen_backend = backend.lower().strip() if backend else _ACTIVE_BACKEND
 
-    if chosen_backend == "fasm" and _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
-        _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
+    if chosen_backend in ("fasm", "native") and _native_lib and hasattr(_native_lib, "nanogemm_gemm_i8i8i32"):
+        _native_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
         return out
 
-    if _HAS_C_EXT and hasattr(_ext, "matmul_int8_fast") and chosen_backend != "fasm":
+    if _HAS_C_EXT and hasattr(_ext, "matmul_int8_fast") and chosen_backend not in ("fasm", "native"):
         _ext.matmul_int8_fast(a, b, out)
         return out
 
-    if _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
-        _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
+    if _native_lib and hasattr(_native_lib, "nanogemm_gemm_i8i8i32"):
+        _native_lib.nanogemm_gemm_i8i8i32(M, N, K, a.ctypes.data, b.ctypes.data, out.ctypes.data)
         return out
 
     # Fallback
