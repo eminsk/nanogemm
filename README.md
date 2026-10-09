@@ -2,6 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/nanogemm?color=blue)](https://pypi.org/project/nanogemm/)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/nanogemm.svg?style=flat&logo=condaforge)](https://anaconda.org/conda-forge/nanogemm)
+[![Anaconda Cloud](https://img.shields.io/conda/vn/m_n_nik/nanogemm.svg?style=flat&logo=anaconda)](https://anaconda.org/m_n_nik/nanogemm)
 [![Debian / Ubuntu PPA](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-APT%20PPA-E95420.svg?style=flat)](https://eminsk.github.io/ppa/)
 [![The Daily Diff](https://img.shields.io/badge/The_Daily_Diff-Featured_Story_(9%2F10)-crimson?logo=hackernews)](https://tdd.cat/2026-09-07/)
 [![GitHub Trending](https://img.shields.io/badge/GitHub_Trending-Deep_Learning-success?logo=github)](https://github.com/eminsk/nanogemm)
@@ -34,9 +35,10 @@
 |---|---|
 | **PyPI (pip)** | `pip install nanogemm` |
 | **PyPI (uv)** | `uv add nanogemm` |
-| **Conda (Anaconda.org)** | `conda install -c m_n_nik nanogemm` |
+| **Conda (conda-forge)** | `conda install -c conda-forge nanogemm` |
+| **Conda (Anaconda Cloud)** | `conda install -c m_n_nik nanogemm` |
 | **Ubuntu / Debian (APT PPA)** | `curl -sS https://eminsk.github.io/ppa/setup.sh \| sudo bash`<br>`sudo apt install python3-nanogemm` |
-| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.8-1_amd64.deb` |
+| **Ubuntu / Debian (.deb)** | `sudo dpkg -i python3-nanogemm_0.3.12-1_amd64.deb` |
 
 ```bash
 pip install nanogemm
