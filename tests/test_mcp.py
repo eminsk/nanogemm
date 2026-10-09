@@ -3,13 +3,13 @@ Unit Tests for NanoGEMM Native MCP Server (JSON-RPC 2.0 stdio)
 """
 
 import json
+
 import pytest
 
 from nanogemm import __version__
 from nanogemm.mcp_server import (
-    NanoGEMMMCPServer,
     LATEST_PROTOCOL_VERSION,
-    SUPPORTED_PROTOCOL_VERSIONS,
+    NanoGEMMMCPServer,
 )
 
 

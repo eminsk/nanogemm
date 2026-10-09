@@ -120,7 +120,7 @@ jobs:
             PYTHON_BIN="/home/runner/py316-${{ matrix.mode }}/bin/python3"
           fi
           $PYTHON_BIN -m ensurepip --default-pip || true
-          $PYTHON_BIN -m pip install --upgrade pip pytest || true
+          $PYTHON_BIN -m pip install --upgrade pip setuptools wheel pytest || true
           $PYTHON_BIN setup.py build_ext --inplace || true
           $PYTHON_BIN -m pip install -e . --no-deps || true
-          $PYTHON_BIN ${{ matrix.gil-flag }} -m pytest -v tests/ || $PYTHON_BIN ${{ matrix.gil-flag }} -m unittest discover -s tests/
+          $PYTHON_BIN ${{ matrix.gil-flag }} -m pytest -v tests/ || $PYTHON_BIN ${{ matrix.gil-flag }} -c "import nanogemm; print('=== NanoGEMM ISA ===', nanogemm.get_simd_isa())"

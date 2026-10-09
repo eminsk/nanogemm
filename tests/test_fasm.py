@@ -3,14 +3,22 @@ Comprehensive Tests for NanoGEMM FASM 32-bit and 64-bit Microkernels.
 Tests both native standalone executables and x86-64 DLL via ctypes against NumPy.
 """
 
-import os
-import sys
 import ctypes
 import subprocess
+import sys
 import time
+import unittest
 from pathlib import Path
+
 import pytest
-np = pytest.importorskip("numpy")
+
+if sys.platform != "win32":
+    raise unittest.SkipTest("FASM PE binaries (.dll / .exe) are Windows-specific")
+
+try:
+    import numpy as np
+except ImportError:
+    raise unittest.SkipTest("NumPy is required for FASM tests")
 
 pytestmark = pytest.mark.skipif(
     sys.platform != "win32",
@@ -31,7 +39,7 @@ def _find_asm_dir() -> Path:
         if pkg_file:
             pkg_dir = Path(pkg_file).resolve().parent
             candidates.extend([pkg_dir / "asm", pkg_dir.parent / "asm"])
-    except Exception:
+    except (ImportError, AttributeError, TypeError):
         pass
 
     for p in candidates:
@@ -53,7 +61,7 @@ def ensure_binaries_built():
     needed = [DLL64_PATH, EXE64_PATH, DLL32_PATH, EXE32_PATH]
     if any(not p.exists() for p in needed):
         print("  [Build] Binaries missing. Compiling with build.bat...")
-        res = subprocess.run(["cmd.exe", "/c", str(BUILD_BAT)], cwd=str(ASM_DIR), capture_output=True, text=True)
+        res = subprocess.run(["cmd.exe", "/c", str(BUILD_BAT)], cwd=str(ASM_DIR), capture_output=True, text=True, check=False)
         assert res.returncode == 0, f"Assembly build failed:\n{res.stdout}\n{res.stderr}"
         print("  [Build] Build completed successfully.")
 
@@ -62,7 +70,7 @@ def test_fasm64_standalone_exe():
     """Runs the 64-bit native PE console test suite."""
     ensure_binaries_built()
     assert EXE64_PATH.exists(), f"Executable not found: {EXE64_PATH}"
-    res = subprocess.run([str(EXE64_PATH)], capture_output=True, text=True)
+    res = subprocess.run([str(EXE64_PATH)], capture_output=True, text=True, check=False)
     print(f"\n--- Output of {EXE64_PATH.name} ---")
     print(res.stdout)
     assert "ALL 64-BIT FASM NATIVE TESTS PASSED" in res.stdout or res.returncode == 0
@@ -73,7 +81,7 @@ def test_fasm32_standalone_exe():
     """Runs the 32-bit native PE console test suite under WoW64."""
     ensure_binaries_built()
     assert EXE32_PATH.exists(), f"Executable not found: {EXE32_PATH}"
-    res = subprocess.run([str(EXE32_PATH)], capture_output=True, text=True)
+    res = subprocess.run([str(EXE32_PATH)], capture_output=True, text=True, check=False)
     print(f"\n--- Output of {EXE32_PATH.name} ---")
     print(res.stdout)
     assert "ALL 32-BIT FASM NATIVE TESTS PASSED" in res.stdout or res.returncode == 0

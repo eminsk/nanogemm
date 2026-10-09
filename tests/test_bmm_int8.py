@@ -4,9 +4,13 @@ Tests numerical correctness, broadcasting, 4D attention shapes, and bit-for-bit 
 """
 
 import sys
+import unittest
 from pathlib import Path
-import pytest
-np = pytest.importorskip("numpy")
+
+try:
+    import numpy as np
+except ImportError:
+    raise unittest.SkipTest("NumPy is required for test_bmm_int8")
 
 try:
     import nanogemm as ng

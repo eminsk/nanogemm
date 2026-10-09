@@ -3,10 +3,12 @@ Tests for nanogemm running in pure Python / PyPy environments (without NumPy dep
 Verifies fallback & native CTypes list execution, dimension validation, and fastpaths.
 """
 
-import pytest
 import ctypes
+
+import pytest
+
 import nanogemm
-from nanogemm import matmul, sgemm, bmm, matmul_int8
+from nanogemm import bmm, matmul, matmul_int8, sgemm
 
 
 def test_matmul_nested_lists():

@@ -257,6 +257,14 @@ def matmul(
         if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
             _native_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
             return out
+        else:
+            for i in range(M):
+                for j in range(N):
+                    s = 0.0
+                    for k in range(K):
+                        s += float(a[i * K + k]) * float(b[k * N + j])
+                    out[i * N + j] = s
+            return out
 
     if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
         if isinstance(a, ctypes.Array) and isinstance(b, ctypes.Array) and shape is not None:
@@ -265,6 +273,14 @@ def matmul(
                 out = (ctypes.c_float * (M * N))()
             if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
                 _native_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
+                return out
+            else:
+                for i in range(M):
+                    for j in range(N):
+                        s = 0.0
+                        for k in range(K):
+                            s += float(a[i * K + k]) * float(b[k * N + j])
+                        out[i * N + j] = s
                 return out
 
         if not isinstance(a, list) or not isinstance(b, list):
@@ -296,6 +312,11 @@ def matmul(
                 for j in range(N):
                     row.append(sum(a[i][k] * b[k][j] for k in range(K)))
                 res.append(row)
+            if out is not None and isinstance(out, ctypes.Array):
+                for i in range(M):
+                    for j in range(N):
+                        out[i * N + j] = res[i][j]
+                return out
             return res
 
     if a.ndim > 2 or b.ndim > 2:

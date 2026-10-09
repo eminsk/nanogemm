@@ -4,9 +4,13 @@ Works with both pytest and python direct execution.
 """
 
 import sys
-import pytest
-np = pytest.importorskip("numpy")
+import unittest
 from pathlib import Path
+
+try:
+    import numpy as np
+except ImportError:
+    raise unittest.SkipTest("NumPy is required for test_correctness")
 
 try:
     import nanogemm as ng
