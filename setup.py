@@ -29,10 +29,20 @@ class BuildExt(build_ext):
                     ext.extra_compile_args = ["-O3", "-ffast-math", "-fPIC", "-DBUILDING_NANOGEMM"]
                 else:
                     ext.extra_compile_args = ["-O3", "-mavx2", "-mfma", "-ffast-math", "-fPIC", "-DBUILDING_NANOGEMM"]
-        super().build_extensions()
+        try:
+            super().build_extensions()
+        except Exception as exc:
+            import warnings
+            warnings.warn(f"Failed to build C extension, falling back to pure Python / FASM DLL: {exc}")
 
 
-if os.environ.get("NANOGEMM_PURE_PYTHON") == "1" or os.environ.get("CONDA_BUILD") == "1" or "RATTLER_BUILD" in os.environ or "BUILD_PREFIX" in os.environ:
+if (
+    os.environ.get("NANOGEMM_PURE_PYTHON") == "1"
+    or os.environ.get("CONDA_BUILD") == "1"
+    or "RATTLER_BUILD" in os.environ
+    or "BUILD_PREFIX" in os.environ
+    or platform.python_implementation() == "PyPy"
+):
     ext_modules = []
 else:
     ext_modules = [

@@ -25,8 +25,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip build setuptools wheel
 
-      - name: Build sdist
-        run: python -m build --sdist
+      - name: Build sdist and universal wheel
+        env:
+          NANOGEMM_PURE_PYTHON: "1"
+        run: python -m build --sdist --wheel
 
       - name: Publish to PyPI
         if: success()
