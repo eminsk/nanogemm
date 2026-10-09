@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nanogemm"
-version = "0.3.10"
+version = "0.3.11"
 description = "Minimalist, bare-metal SIMD & Assembly GEMM engine for Python. Sub-microsecond CPU matrix multiplication for AI & scientific computing."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -50,9 +50,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "numpy>=1.20.0, <2; implementation_name == 'pypy' and python_version < '3.10'",
     "numpy>=1.20.0, <2.3.0; implementation_name != 'pypy' and python_version <= '3.13'",
-    "numpy>=1.20.0; implementation_name == 'pypy' and python_version >= '3.10' and python_version < '3.12'",
     "numpy>=2.3.0; implementation_name != 'pypy' and python_version >= '3.14' and python_version < '3.16'",
     "typing-extensions>=4.0; python_version < '3.10'",
 ]
