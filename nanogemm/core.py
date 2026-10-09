@@ -769,3 +769,199 @@ def quantized_matmul(
             np.add(res, bias, out=out)
 
     return res
+
+
+def is_available() -> bool:
+    """
+    Check if hardware-accelerated SIMD (FASM assembly kernel or C extension) is operational.
+    """
+    return (_native_lib is not None) or _HAS_C_EXT
+
+
+def matmul_flat(
+    a_flat: Any,
+    b_flat: Any,
+    M: int,
+    N: int,
+    K: int,
+    out: Optional[Any] = None,
+) -> Any:
+    """
+    Fast direct matrix multiplication on 1D contiguous sequences / ctypes arrays.
+    Multiplies (M x K) by (K x N) -> (M x N).
+    """
+    if M <= 0 or N <= 0 or K <= 0:
+        raise ValueError(f"Invalid dimensions: M={M}, N={N}, K={K}")
+
+    if isinstance(a_flat, ctypes.Array):
+        c_a = a_flat
+    elif isinstance(a_flat, (list, tuple)):
+        c_a = (ctypes.c_float * len(a_flat))(*a_flat)
+    elif np is not None and isinstance(a_flat, np.ndarray):
+        c_a = a_flat.ctypes.data_as(ctypes.c_void_p)
+    else:
+        c_a = (ctypes.c_float * len(a_flat))(*a_flat)
+
+    if isinstance(b_flat, ctypes.Array):
+        c_b = b_flat
+    elif isinstance(b_flat, (list, tuple)):
+        c_b = (ctypes.c_float * len(b_flat))(*b_flat)
+    elif np is not None and isinstance(b_flat, np.ndarray):
+        c_b = b_flat.ctypes.data_as(ctypes.c_void_p)
+    else:
+        c_b = (ctypes.c_float * len(b_flat))(*b_flat)
+
+    total_out = M * N
+    if out is None:
+        c_out = (ctypes.c_float * total_out)()
+    elif isinstance(out, ctypes.Array):
+        c_out = out
+    elif np is not None and isinstance(out, np.ndarray):
+        c_out = out.ctypes.data_as(ctypes.c_void_p)
+    else:
+        c_out = (ctypes.c_float * total_out)()
+
+    if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
+        ptr_a = c_a if isinstance(c_a, ctypes.c_void_p) else ctypes.byref(c_a)
+        ptr_b = c_b if isinstance(c_b, ctypes.c_void_p) else ctypes.byref(c_b)
+        ptr_out = c_out if isinstance(c_out, ctypes.c_void_p) else ctypes.byref(c_out)
+        _native_lib.nanogemm_matmul(M, N, K, ptr_a, ptr_b, ptr_out)
+    else:
+        for i in range(M):
+            for j in range(N):
+                s = sum(a_flat[i * K + k] * b_flat[k * N + j] for k in range(K))
+                c_out[i * N + j] = s
+
+    if out is not None and out is c_out:
+        return out
+    if np is not None and isinstance(out, np.ndarray):
+        return out
+    return c_out
+
+
+def score_batch(
+    features: Any,
+    weights: Any,
+    bias: float = 0.0,
+    activation: Optional[str] = "sigmoid",
+    out: Optional[Any] = None,
+    shape: Optional[Tuple[int, int]] = None,
+) -> Any:
+    """
+    Sub-microsecond batched AI scoring with AVX2 SIMD NanoGEMM kernel.
+    Computes: Z = features @ weights + bias, followed by activation (sigmoid/linear/relu).
+
+    Parameters
+    ----------
+    features : np.ndarray | list[list[float]] | list[float] | ctypes.Array
+        Feature matrix of shape (N, K), or flat buffer with shape=(N, K).
+    weights : np.ndarray | list[float] | list[list[float]] | ctypes.Array
+        Model weights of shape (K,) or (K, 1).
+    bias : float, default 0.0
+        Model bias term.
+    activation : str, default "sigmoid"
+        Activation function: "sigmoid", "linear" (or None), or "relu".
+    out : optional buffer
+        Pre-allocated output buffer of length N.
+    shape : tuple of (N, K), optional
+        Required if features is a pre-flattened 1D sequence or ctypes array.
+
+    Returns
+    -------
+    np.ndarray (if input was numpy) or list[float] (if input was list/ctypes)
+        Confidence scores of length N.
+    """
+    # 1. NumPy FastPath
+    if np is not None and isinstance(features, np.ndarray):
+        if features.ndim != 2:
+            raise ValueError(f"features must be 2D array, got {features.ndim}D")
+        N, K = features.shape
+
+        if isinstance(weights, np.ndarray):
+            w = weights.reshape((K, 1)) if weights.ndim == 1 else weights
+        else:
+            w = np.array(weights, dtype=np.float32).reshape((K, 1))
+
+        if out is None or not isinstance(out, np.ndarray):
+            out_buf = np.empty((N, 1), dtype=np.float32, order="C")
+        else:
+            out_buf = out.reshape((N, 1)) if out.ndim == 1 else out
+
+        matmul(features, w, out=out_buf)
+
+        if bias != 0.0:
+            out_buf += np.float32(bias)
+
+        if activation == "sigmoid":
+            np.clip(out_buf, -15.0, 15.0, out=out_buf)
+            res = 1.0 / (1.0 + np.exp(-out_buf))
+            return res.ravel()
+        elif activation == "relu":
+            np.maximum(out_buf, 0.0, out=out_buf)
+            return out_buf.ravel()
+        else:
+            return out_buf.ravel()
+
+    # 2. Pure Python / List / CTypes FastPath (No-NumPy / PyPy / Standalone)
+    import math
+
+    if shape is not None:
+        N, K = shape
+        if isinstance(features, (list, tuple)):
+            flat_x = [float(v) for v in features]
+            c_x = (ctypes.c_float * len(flat_x))(*flat_x)
+        else:
+            c_x = features
+    elif isinstance(features, (list, tuple)):
+        N = len(features)
+        if N == 0:
+            return []
+        if isinstance(features[0], (list, tuple)):
+            K = len(features[0])
+            flat_x = [float(v) for row in features for v in row]
+            c_x = (ctypes.c_float * len(flat_x))(*flat_x)
+        else:
+            raise ValueError("shape=(N, K) required when features is a 1D flat sequence")
+    elif isinstance(features, ctypes.Array):
+        if shape is None:
+            raise ValueError("shape=(N, K) required when features is a ctypes.Array")
+        N, K = shape
+        c_x = features
+    else:
+        raise TypeError(f"Unsupported features type: {type(features)}")
+
+    if isinstance(weights, (list, tuple)):
+        if len(weights) > 0 and isinstance(weights[0], (list, tuple)):
+            flat_w = [float(w[0]) for w in weights]
+        else:
+            flat_w = [float(w) for w in weights]
+        if len(flat_w) != K:
+            raise ValueError(f"Weight length {len(flat_w)} does not match feature dimension {K}")
+        c_w = (ctypes.c_float * K)(*flat_w)
+    elif isinstance(weights, ctypes.Array):
+        flat_w = [float(weights[i]) for i in range(K)]
+        c_w = weights
+    else:
+        raise TypeError(f"Unsupported weights type: {type(weights)}")
+
+    if out is not None and isinstance(out, ctypes.Array) and len(out) >= N:
+        c_out = out
+    else:
+        c_out = (ctypes.c_float * N)()
+
+    if _native_lib is not None and hasattr(_native_lib, "nanogemm_matmul"):
+        _native_lib.nanogemm_matmul(N, 1, K, ctypes.byref(c_x), ctypes.byref(c_w), ctypes.byref(c_out))
+    else:
+        for i in range(N):
+            c_out[i] = sum(c_x[i * K + k] * flat_w[k] for k in range(K))
+
+    b_val = float(bias)
+    if activation == "sigmoid":
+        res = [1.0 / (1.0 + math.exp(-max(min(c_out[i] + b_val, 15.0), -15.0))) for i in range(N)]
+    elif activation == "relu":
+        res = [max(0.0, c_out[i] + b_val) for i in range(N)]
+    else:
+        res = [c_out[i] + b_val for i in range(N)]
+
+    return res
+

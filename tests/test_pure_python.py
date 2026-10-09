@@ -70,3 +70,36 @@ def test_dimension_mismatch():
     b = [[1.0, 2.0], [3.0, 4.0]]
     with pytest.raises(ValueError):
         matmul(a, b)
+
+
+def test_is_available():
+    assert nanogemm.is_available() is True
+
+
+def test_matmul_flat():
+    from nanogemm import matmul_flat
+    a_flat = [1.0, 2.0, 3.0, 4.0]
+    b_flat = [5.0, 6.0, 7.0, 8.0]
+    out = matmul_flat(a_flat, b_flat, M=2, N=2, K=2)
+    assert pytest.approx(out[0]) == 19.0
+    assert pytest.approx(out[1]) == 22.0
+    assert pytest.approx(out[2]) == 43.0
+    assert pytest.approx(out[3]) == 50.0
+
+
+def test_score_batch_lists():
+    from nanogemm import score_batch
+    # 2 samples, 3 features
+    feats = [[1.0, 0.5, -1.0], [2.0, -1.0, 0.0]]
+    weights = [0.5, 1.0, -0.5]
+    bias = 0.2
+
+    # sample 0: z = 1.0*0.5 + 0.5*1.0 + (-1.0)*(-0.5) + 0.2 = 0.5 + 0.5 + 0.5 + 0.2 = 1.7
+    # sigmoid(1.7) = 1 / (1 + exp(-1.7)) = 0.8455347
+    # sample 1: z = 2.0*0.5 + (-1.0)*1.0 + 0.0*(-0.5) + 0.2 = 1.0 - 1.0 + 0.2 = 0.2
+    # sigmoid(0.2) = 1 / (1 + exp(-0.2)) = 0.5498339
+    scores = score_batch(feats, weights, bias=bias, activation="sigmoid")
+    assert len(scores) == 2
+    assert pytest.approx(scores[0], rel=1e-3) == 0.84553
+    assert pytest.approx(scores[1], rel=1e-3) == 0.54983
+
