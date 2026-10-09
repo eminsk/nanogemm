@@ -2,7 +2,7 @@
 NanoGEMM: Minimalist, bare-metal SIMD & Assembly Matrix Multiplication Engine.
 """
 
-__version__ = "0.3.11"
+__version__ = "0.3.12"
 
 from nanogemm.core import (
     matmul,

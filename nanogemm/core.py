@@ -213,38 +213,45 @@ def get_simd_isa() -> str:
 
 
 def matmul(
-    a: np.ndarray,
-    b: np.ndarray,
-    out: Optional[np.ndarray] = None,
+    a: Any,
+    b: Any,
+    out: Optional[Any] = None,
     backend: Optional[str] = None,
-) -> np.ndarray:
+    shape: Optional[Tuple[int, int, int]] = None,
+) -> Any:
     """
     Multiply two 2D matrices using hardware-accelerated SIMD GEMM.
 
-    Parameters
-    ----------
-    a : np.ndarray
-        Matrix of shape (M, K). Must be 2-dimensional.
-    b : np.ndarray
-        Matrix of shape (K, N). Must be 2-dimensional.
-    out : np.ndarray, optional
-        Pre-allocated output buffer of shape (M, N) and dtype float32.
-    backend : str, optional
-        Override execution backend ('fasm', 'c', or 'auto').
-
-    Returns
-    -------
-    np.ndarray
-        Result of matrix multiplication (M, N) with float32 dtype.
+    Supports:
+    - NumPy ndarray (float32, 2D)
+    - 2D nested lists: [[...], [...]]
+    - Pre-allocated ctypes.Array buffers (zero-copy FastPath for HFT/trading)
     """
+    # 0. Zero-Copy CTypes Array FastPath
+    if isinstance(a, ctypes.Array) and isinstance(b, ctypes.Array) and shape is not None:
+        M, N, K = shape
+        if out is None:
+            out = (ctypes.c_float * (M * N))()
+        if _fasm_lib is not None:
+            _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
+            return out
+
     if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
+        if isinstance(a, ctypes.Array) and isinstance(b, ctypes.Array) and shape is not None:
+            M, N, K = shape
+            if out is None:
+                out = (ctypes.c_float * (M * N))()
+            if _fasm_lib is not None:
+                _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(a), ctypes.byref(b), ctypes.byref(out))
+                return out
+
         if not isinstance(a, list) or not isinstance(b, list):
-            raise TypeError("Expected numpy arrays or 2D nested lists")
+            raise TypeError("Expected numpy arrays, ctypes arrays, or 2D nested lists")
         M = len(a)
-        K = len(a[0]) if M > 0 else 0
+        K = len(a[0]) if M > 0 and isinstance(a[0], list) else 0
         K_b = len(b)
-        N = len(b[0]) if K_b > 0 else 0
-        if K != K_b:
+        N = len(b[0]) if K_b > 0 and isinstance(b[0], list) else 0
+        if K != K_b or K == 0 or N == 0:
             raise ValueError(f"Incompatible matrix dimensions: cannot multiply ({M}, {K}) by ({K_b}, {N})")
         a_flat = [float(x) for row in a for x in row]
         b_flat = [float(x) for row in b for x in row]
@@ -253,6 +260,9 @@ def matmul(
             c_b = (ctypes.c_float * len(b_flat))(*b_flat)
             c_c = (ctypes.c_float * (M * N))()
             _fasm_lib.nanogemm_matmul(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
+            if out is not None and isinstance(out, ctypes.Array):
+                ctypes.memmove(ctypes.byref(out), ctypes.byref(c_c), M * N * 4)
+                return out
             res = []
             for i in range(M):
                 res.append([c_c[i * N + j] for j in range(N)])
@@ -354,6 +364,48 @@ def sgemm(
     """
     Standard BLAS SGEMM: C = alpha * (A @ B) + beta * C.
     """
+    if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
+        if not isinstance(a, list) or not isinstance(b, list):
+            raise TypeError("Expected numpy arrays or 2D nested lists")
+        M = len(a)
+        K = len(a[0]) if M > 0 and isinstance(a[0], list) else 0
+        K_b = len(b)
+        N = len(b[0]) if K_b > 0 and isinstance(b[0], list) else 0
+        if K != K_b or K == 0 or N == 0:
+            raise ValueError(f"Incompatible matrix dimensions: ({M}, {K}) vs ({K_b}, {N})")
+        a_flat = [float(x) for row in a for x in row]
+        b_flat = [float(x) for row in b for x in row]
+        if _fasm_lib is not None:
+            c_a = (ctypes.c_float * len(a_flat))(*a_flat)
+            c_b = (ctypes.c_float * len(b_flat))(*b_flat)
+            if c is not None and isinstance(c, list):
+                c_flat = [float(x) for row in c for x in row]
+                c_c = (ctypes.c_float * len(c_flat))(*c_flat)
+            else:
+                c_c = (ctypes.c_float * (M * N))()
+            _fasm_lib.nanogemm_sgemm(
+                M, N, K,
+                float(alpha),
+                ctypes.byref(c_a), K,
+                ctypes.byref(c_b), N,
+                float(beta),
+                ctypes.byref(c_c), N
+            )
+            res = []
+            for i in range(M):
+                res.append([c_c[i * N + j] for j in range(N)])
+            return res
+        else:
+            res = []
+            for i in range(M):
+                row = []
+                for j in range(N):
+                    dot = sum(a[i][k] * b[k][j] for k in range(K))
+                    old_c = c[i][j] if (c and i < len(c) and j < len(c[i])) else 0.0
+                    row.append(alpha * dot + beta * old_c)
+                res.append(row)
+            return res
+
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError(f"Expected 2D arrays, got {a.ndim} and {b.ndim}")
 
@@ -457,6 +509,17 @@ def bmm(
     np.ndarray
         Result of batched matrix multiplication.
     """
+    if np is None or not hasattr(a, "shape") or not hasattr(b, "shape"):
+        if isinstance(a, list) and isinstance(b, list):
+            if len(a) > 0 and isinstance(a[0], list) and len(a[0]) > 0 and isinstance(a[0][0], list):
+                if len(b) > 0 and isinstance(b[0], list) and len(b[0]) > 0 and isinstance(b[0][0], list):
+                    return [matmul(a[i], b[i], backend=backend) for i in range(len(a))]
+                else:
+                    return [matmul(a[i], b, backend=backend) for i in range(len(a))]
+            elif len(b) > 0 and isinstance(b[0], list) and len(b[0]) > 0 and isinstance(b[0][0], list):
+                return [matmul(a, b[i], backend=backend) for i in range(len(b))]
+        raise TypeError("Expected numpy arrays or 3D nested lists for bmm")
+
     orig_shape_a = a.shape
     orig_shape_b = b.shape
 
@@ -575,6 +638,35 @@ def matmul_int8(
     np.ndarray
         Result of matrix multiplication with int32 dtype and shape (M, N).
     """
+    if np is None or not hasattr(a, "ndim") or not hasattr(b, "ndim"):
+        if not isinstance(a, list) or not isinstance(b, list):
+            raise TypeError("Expected numpy arrays or 2D nested lists")
+        M = len(a)
+        K = len(a[0]) if M > 0 and isinstance(a[0], list) else 0
+        K_b = len(b)
+        N = len(b[0]) if K_b > 0 and isinstance(b[0], list) else 0
+        if K != K_b or K == 0 or N == 0:
+            raise ValueError(f"Incompatible matrix dimensions: ({M}, {K}) vs ({K_b}, {N})")
+        a_flat = [int(x) for row in a for x in row]
+        b_flat = [int(x) for row in b for x in row]
+        if _fasm_lib and hasattr(_fasm_lib, "nanogemm_gemm_i8i8i32"):
+            c_a = (ctypes.c_int8 * len(a_flat))(*a_flat)
+            c_b = (ctypes.c_int8 * len(b_flat))(*b_flat)
+            c_c = (ctypes.c_int32 * (M * N))()
+            _fasm_lib.nanogemm_gemm_i8i8i32(M, N, K, ctypes.byref(c_a), ctypes.byref(c_b), ctypes.byref(c_c))
+            res = []
+            for i in range(M):
+                res.append([c_c[i * N + j] for j in range(N)])
+            return res
+        else:
+            res = []
+            for i in range(M):
+                row = []
+                for j in range(N):
+                    row.append(sum(int(a[i][k]) * int(b[k][j]) for k in range(K)))
+                res.append(row)
+            return res
+
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError(f"Expected 2D arrays for matmul_int8, got a.ndim={a.ndim} and b.ndim={b.ndim}")
 

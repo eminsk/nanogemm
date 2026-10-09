@@ -7,6 +7,16 @@ MIT License
 import argparse
 import sys
 
+# Ensure UTF-8 console output on Windows
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from nanogemm import __version__
 from nanogemm.mcp_server import main_mcp
 
